@@ -467,6 +467,9 @@ while (<>) {
     if ($do_no_rodata and /^\s+\.section\s+.rodata/) {
 	print ".data\n";
 	next;
+    } elsif ($do_no_rodata and /^\s+\.section\s+.gnu.linkonce.r/) {
+	print ".data\n";
+	next;
     } elsif ($do_no_rodata and /^\s+\.section\s+\.note\.GNU-stack/) {
 	next;
     }
