@@ -1,4 +1,4 @@
-#include "stubs.h"
+#include "libc.h"
 
 #define dSP register int *sp = stack_pointer
 #define TOP (*sp)
