@@ -12,8 +12,15 @@ my $do_align = 1;
 
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
-my $DATA_START = sprintf '$0x%08x', $data_start;
-my $CODE_START = sprintf '$0x%08x', $code_start;
+
+my($DATA_START, $CODE_START);
+if ($is_kernel) {
+    $DATA_START = '$data_sandbox_start';
+    $CODE_START = '$code_sandbox_start';
+} else {
+    $DATA_START = sprintf '$0x%08x', $data_start;
+    $CODE_START = sprintf '$0x%08x', $code_start;
+}
 
 sub insn_len {
     my($line) = @_;
@@ -311,34 +318,78 @@ sub maybe_rewrite {
     }
 }
 
-while (<>) {
-    last if /^\t?\.text/;
-    print;
+sub print_stubs {
+    open(STUBS, "<stub-list");
+    my $i = 0;
+    while (<STUBS>) {
+	my $f = $_;
+	chomp $f;
+	print "$f:\n";
+	printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
+	print "\tpopl\t%ebx\n";
+	print "\tandl\t$JUMP_MASK, %ebx\n" if $style =~ /and/;
+	print "\torl\t$CODE_START, %ebx\n" if $style =~ /or/;
+	print "\tjmp\t*%ebx\n";
+	print "\t.p2align $log_chunk_size\n";
+	$i++;
+    }
+    close STUBS;
 }
-print;
-nop_pad($chunk_size - 5);
-print "\tcall main\n"; # 5 bytes
-print "\tret\n";
-print "\t.p2align 5\n";
 
-open(STUBS, "<stub-list");
-my $i = 0;
-while (<STUBS>) {
-    my $f = $_;
-    chomp $f;
-    print "$f:\n";
-    printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
-    print "\tpopl\t%ebx\n";
-    print "\tandl\t$JUMP_MASK, %ebx\n" if $style =~ /and/;
-    print "\torl\t$CODE_START, %ebx\n" if $style =~ /or/;
-    print "\tjmp\t*%ebx\n";
+if ($is_kernel) {
+    print scalar <>;
+    print qq/\t.section .sandboxed_text, "ax"\n/;
+    print "\t.p2align 12\n";
+    print ".globl code_sandbox_start\n";
+    print "code_sandbox_start:\n";
+    print "\tjmp return_from_sandbox\n";
     print "\t.p2align $log_chunk_size\n";
-    $i++;
+} else {
+    while (<>) {
+	last if /^\t?\.text/;
+	print;
+    }
+    print;
+    nop_pad($chunk_size - 5);
+    print "\tcall main\n"; # 5 bytes
+    print "\tret\n";
+    print "\t.p2align $log_chunk_size\n";
 }
-close STUBS;
+
+print_stubs;
+
+if ($is_kernel) {
+    open(EXPORTS, "<export-list");
+    while (<EXPORTS>) {
+	my $f = $_;
+	chomp $f;
+	print "stub_$f:\n";
+	nop_pad($chunk_size - 5);
+	print "\tcall $f\n"; # 5 bytes
+	print "\tpopl %ecx\n";
+	print "\tjmp return_from_sandbox\n";
+	print "\t.p2align $log_chunk_size\n";
+    }
+    close EXPORTS;
+}
+
+my($seen_data) = 0;
 
 while (<>) {
     my $comment;
+    if ($is_kernel and /\t\.data/ || /\.section \.rodata/) {
+	print qq/\t.section .sandboxed_data, "aw"\n/;
+        if (!$seen_data) {
+            print "\t.p2align 12\n";
+            print ".globl data_sandbox_start\n";
+            print "data_sandbox_start:\n";
+            $seen_data = 1;
+        }
+	next;
+    } elsif ($is_kernel and /^\t\.text/) {
+	print qq/\t.section .sandboxed_text, "ax"\n/;
+	next;
+    }
     if ($do_no_rodata and /^\s+\.section\s+.rodata/) {
 	print ".data\n";
 	next;

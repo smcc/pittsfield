@@ -7,7 +7,8 @@ DEBUG:=-g
 #export CCACHE_DIR=/scratch2/smcc-extras/ccache
 #export CCACHE_LOGFILE=/scratch2/smcc-extras/ccache/ccache.log.smcc
 CC:=gcc
-AS:=./as-new
+#AS:=./as-new
+AS:=as
 #TFF:=/afs/csail.mit.edu/u/s/smcc/old-bin/topformflat
 TFF:=./topformflat
 

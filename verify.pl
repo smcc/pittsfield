@@ -405,7 +405,7 @@ while (<>) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);
-	if ($flags & (IJUMP|IWRITE) and $addr != $code_start + 0x20) {
+	if ($flags & (IJUMP|IWRITE) and $addr != $code_start + 0x10) {
 	    printf "Unsafe %s %s at 0x%08x ($safety)\n", $op, $args, $addr;
 	}
 	if ($flags & JUMP and $unsafety & CHANGE_EBP) {
