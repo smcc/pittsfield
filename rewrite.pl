@@ -270,8 +270,8 @@ sub maybe_rewrite {
 	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
 	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
 	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
-	emit("popf", 1) if $precious_eflags;
 	emit("$op\t$from, (%ebx)", 6);
+	emit("popf", 1) if $precious_eflags;
 	return 1;
     } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
 	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore/) {
@@ -294,8 +294,8 @@ sub maybe_rewrite {
 	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
 	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
 	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
-	emit("popf", 1) if $precious_eflags;
 	emit("$op\t(%ebx)", 3);
+	emit("popf", 1) if $precious_eflags;
 	return 1;
     } elsif ($args =~ /^($immed|$reg), ($lword)$/) {
 	warn "Skipping bogus direct write $op $args";
