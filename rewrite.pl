@@ -270,8 +270,9 @@ sub maybe_rewrite {
 	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
 	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
 	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
+	emit("popf", 1) if $precious_eflags and $DO_TEST;
 	emit("$op\t$from, (%ebx)", 6);
-	emit("popf", 1) if $precious_eflags;
+	emit("popf", 1) if $precious_eflags and !$DO_TEST;
 	return 1;
     } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
 	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore/) {
@@ -279,7 +280,7 @@ sub maybe_rewrite {
 	return 0 if $op =~ /^lea[blw]$/;
 	if ($target =~ /^(-?\d+)\((%e[bs]p)\)$/) {
 	    my($offset, $base_reg) = ($1, $2);
-	    if ($base_reg eq "%ebp" and  abs($offset) < 32768) {
+	    if ($base_reg eq "%ebp" and abs($offset) < 32768) {
 		return 0;
 	    } elsif ($base_reg eq "%esp" and abs($offset) < 127) {
 		return 0;
@@ -294,8 +295,9 @@ sub maybe_rewrite {
 	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
 	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
 	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
+	emit("popf", 1) if $precious_eflags and $DO_TEST;
 	emit("$op\t(%ebx)", 3);
-	emit("popf", 1) if $precious_eflags;
+	emit("popf", 1) if $precious_eflags and !$DO_TEST;
 	return 1;
     } elsif ($args =~ /^($immed|$reg), ($lword)$/) {
 	warn "Skipping bogus direct write $op $args";
@@ -311,6 +313,15 @@ sub maybe_rewrite {
 	emit("orl\t$CODE_START, (%esp)", 7) if $DO_OR;
 	emit_test("(%esp)", $JUMP_ANTI_MASK) if $DO_TEST;
 	emit("ret $args", (length($args) ? 3 : 1));
+	# The old, slow way:
+ 	#maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
+ 	#		+ 3);
+	#emit("popl\t%ebx", 1);
+ 	#emit("andl\t$JUMP_MASK, %ebx", 7) if $DO_AND;
+ 	#emit("orl\t$CODE_START, %ebx", 7) if $DO_OR;
+ 	#emit_test("%ebx", $JUMP_ANTI_MASK) if $DO_TEST;
+	#emit("jmp *%ebx", 2);
+	#die if length($args);
 	return 1;
     } elsif ($op eq "call") {
 	my $real_call = "";
