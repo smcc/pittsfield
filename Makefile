@@ -3,15 +3,12 @@ SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000 -e ma
 
 OPT:=-O3 -ffast-math
 DEBUG:=-g
-#CC:=/usr/local/pkg/gcc/gcc-3.2.1/bin/gcc
-#export CCACHE_DIR=/scratch2/smcc-extras/ccache
-#export CCACHE_LOGFILE=/scratch2/smcc-extras/ccache/ccache.log.smcc
 CC:=gcc
 CXX:=g++ -fno-exceptions -fno-rtti
-#AS:=./as-new
 AS:=as
-#TFF:=/afs/csail.mit.edu/u/s/smcc/old-bin/topformflat
 TFF:=./topformflat
+
+.PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
 loader:	loader.c wrappers.h sizes.h high-link.x
 	@#$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
@@ -28,7 +25,6 @@ sizes.h: sizes.pm
 
 %.s:	%.c libc.h stub-list sizes.h
 	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
-#	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*-fewer-lines.c -o $*.s
 
 %.s:	%.cc libc.h stub-list sizes.h
 	$(CXX) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.cc
