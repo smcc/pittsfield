@@ -1092,3 +1092,6 @@ REPLACEMENT void *bsearch(const void *key, const void *base, size_t nmemb,
     return 0;
 }
 
+void * _Znwj(unsigned int n) {
+    return malloc(n);
+}
