@@ -1,0 +1,51 @@
+This is the first release of PittSFIeld, a tool for sandboxing
+arbitrary x86 binary programs.
+
+Sandboxing, also known as software-based fault isolation (SFI), is a
+technique to enforce security policies constraining memory access and
+control flow in untrusted binary code. It directly modifies software
+at the instruction level to efficiently check that memory addresses
+and jump targets lie only in designated safe data and code regions.
+
+This distribution includes the rewriting and verification tools (Perl
+scripts rewrite.pl and verify.pl), as well as an example application
+consisting of a program to load fault-isolated object files (loader.c)
+and an implementation of parts of the C standard library (libc.[ch])
+in which some routines are rewritten and linked with the sandboxed
+code (and so untrusted), and others make calls out of the sandbox to
+trusted stubs.
+
+Required software:
+GCC (tested with version 3.3.5)
+GNU binutils (tested with version 2.15)
+Pel (tested with version 5.8.4)
+libelf (tested with version 0.8.5)
+
+There is not yet any documentation, sorry. The Makefile has examples
+of things you can do; parameters of the translation can be controlled
+in sizes.pm. To compile and isolate a module foo-mod.c, say 
+
+  make foo-mod.fio
+
+To verify it, say
+
+  make foo-mod.check
+
+To execute it, say
+
+  ./loader foo-mod.fio
+
+PittSFIeld is Copyright (C) 2004-2005, Stephen McCamant.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, version 2, as
+published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA
