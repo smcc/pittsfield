@@ -12,7 +12,7 @@ AS:=as
 #TFF:=/afs/csail.mit.edu/u/s/smcc/old-bin/topformflat
 TFF:=./topformflat
 
-loader:	loader.c wrapper.h sizes.h high-link.x
+loader:	loader.c wrappers.h sizes.h high-link.x
 	@#$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
 	$(CC) -Wall -g -static loader.c -lelf -lm -o loader
 
@@ -80,7 +80,7 @@ libc-no-stubs.o:	libc.c libc.h
 %-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
 	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm
 
-%.out:	%.fio %-raw %-noebx %-pad %-pad-noebx
+%.out:	%.fio %-raw %-noebx %-pad %-pad-noebx loader
 	-/usr/bin/time -f '%e %U %S' -o $*.out ./$*-raw 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-noebx 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad 
