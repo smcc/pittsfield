@@ -1,0 +1,16 @@
+README			Instructions
+MANIFEST		List of files to distribute
+COPYING			GNU General Public License
+Makefile		Script for compiling and fault-isolating
+high-link.x		Linker script to relocate to a high address
+libc.c			In-sandbox side of C library (implementation)
+libc.h			In-sandbox side of C library (declarations)
+loader.c		Application to load sandboxed binaries
+outside.c		Alternate stubs for use in debugging w/o loader
+pad.pl			Add padding in the same way as rewrite.pl would
+rewrite.pl		Rewrite assembly to add sandboxing checks
+sizes.pm		Define parameters of sandboxing process
+stubs.h			Definition of interface with sandbox
+index-stubs.pl		Generate files from stubs.h
+verify.pl		Make sure sandboxing was performed properly
+x86_common.pm		Definitions of instructions used by rewrite/verify
