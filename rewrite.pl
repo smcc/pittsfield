@@ -22,6 +22,12 @@ if ($is_kernel) {
     $CODE_START = sprintf '$0x%08x', $code_start;
 }
 
+my $is_main = 0;
+if (grep($_ eq "-main", @ARGV)) {
+    $is_main = 1;
+    @ARGV = grep($_ ne "-main", @ARGV);
+}
+
 sub insn_len {
     my($line) = @_;
     if ($line =~ /^\t(inc|dec|pop|push)l\t$ereg$/o) {
@@ -324,6 +330,7 @@ sub print_stubs {
     while (<STUBS>) {
 	my $f = $_;
 	chomp $f;
+	print ".globl $f\n";
 	print "$f:\n";
 	printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
 	print "\tpopl\t%ebx\n";
@@ -350,13 +357,15 @@ if ($is_kernel) {
 	print;
     }
     print;
-    nop_pad($chunk_size - 5);
-    print "\tcall main\n"; # 5 bytes
-    print "\tret\n";
-    print "\t.p2align $log_chunk_size\n";
+    if ($is_main) {
+	nop_pad($chunk_size - 5);
+	print "\tcall main\n"; # 5 bytes
+	print "\tret\n";
+	print "\t.p2align $log_chunk_size\n";
+    }
 }
 
-print_stubs;
+print_stubs if $is_main;
 
 if ($is_kernel) {
     open(EXPORTS, "<export-list");

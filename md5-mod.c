@@ -1,4 +1,4 @@
-#include "libc.c"
+#include "libc.h"
 #include "stubs.h"
 
 typedef unsigned long uint32;

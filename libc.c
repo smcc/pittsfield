@@ -1,111 +1,12 @@
-typedef signed long ptrdiff_t;
-typedef unsigned int size_t;
-typedef int ssize_t;
-typedef long wchar_t;
-typedef long int off_t;
-typedef int clock_t;
-typedef __builtin_va_list va_list;
-
-typedef short int16_t;
-typedef unsigned short u_int16_t;
-typedef int int32_t;
-typedef unsigned int u_int32_t;
-typedef long long int64_t;
-
-typedef struct __dirstream DIR;
-
-struct timeval {
-    long tv_sec;
-    long tv_usec;
-};
-
-struct timezone {
-    int  tz_minuteswest; /* minutes W of Greenwich */
-    int  tz_dsttime;     /* type of dst correction */
-};
-
-struct rusage {
-    struct timeval ru_utime; /* user time used */
-    struct timeval ru_stime; /* system time used */
-    long   ru_maxrss;        /* maximum resident set size */
-    long   ru_ixrss;         /* integral shared memory size */
-    long   ru_idrss;         /* integral unshared data size */
-    long   ru_isrss;         /* integral unshared stack size */
-    long   ru_minflt;        /* page reclaims */
-    long   ru_majflt;        /* page faults */
-    long   ru_nswap;         /* swaps */
-    long   ru_inblock;       /* block input operations */
-    long   ru_oublock;       /* block output operations */
-    long   ru_msgsnd;        /* messages sent */
-    long   ru_msgrcv;        /* messages received */
-    long   ru_nsignals;      /* signals received */
-    long   ru_nvcsw;         /* voluntary context switches */
-    long   ru_nivcsw;        /* involuntary context switches */
-};
-
-struct tms {
-    clock_t tms_utime;  /* user time */
-    clock_t tms_stime;  /* system time */
-    clock_t tms_cutime; /* user time of dead children */
-    clock_t tms_cstime; /* system time of dead children */
-};
-
-typedef long int time_t;
-
-struct stat {
-    off_t st_size;
-    int st_mode;
-    time_t st_mtime;
-};
-
-#include "stubs.h"
-
+#include "libc.h"
 #include "sizes.h"
 
-#ifdef NO_STUBS
-/* Hide these from outside.c, so it can get the real ones */
-#define REPLACEMENT static
-#else
-#define REPLACEMENT
-#endif
-
-#ifndef NULL
-#define NULL (void*)0
-#endif
-
-#define offsetof(type,member) ((size_t) &((type*)0)->member)
-
-#ifdef NO_STUBS
-#define FILE myFILE
-#define files myfiles
-#define stdin mystdin
-#define stdout mystdout
-#define stderr mystderr
-#define fopen myfopen
-#define fdopen myfdopen
-#define fclose myfclose
-#define ferror myferror
-#define fflush myfflush
-#define fgetc myfgetc
-#define fprintf myfprintf
-#define fread myfread
-#define fwrite myfwrite
-#define rewind myrewind
-#define ungetc myungetc
-#endif
-typedef int FILE;
 FILE files[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 FILE *stdin = &files[0];
 FILE *stdout = &files[1];
 FILE *stderr = &files[2];
 
-REPLACEMENT int fprintf(FILE *stream, const char *format, ...);
-REPLACEMENT void *malloc(size_t nbytes);
-REPLACEMENT char *strcpy(char *buf, const char *src);
-REPLACEMENT char *strdup(const char *s);
-
-#define assert(e) ((void)((e) ? 0 : abort()))
-
+#ifdef DEFINE_INLINES
 REPLACEMENT void *memchr(const void *s, int c, size_t n) {
     int i;
     char *cp = (char *)s;
@@ -170,6 +71,7 @@ REPLACEMENT int memcmp(const void *v1, const void *v2, size_t count) {
     }
     return 0;
 }
+#endif
 
 #if 0
 /* The world's smallest malloc implementation (TM).
@@ -213,6 +115,7 @@ REPLACEMENT char *getenv(const char *name) {
 	return v;
 }
 
+#ifdef DEFINE_INLINES
 REPLACEMENT size_t strlen(const char *s) {
     size_t i;
     for (i = 0; *s; s++)
@@ -292,6 +195,7 @@ REPLACEMENT const char *strstr(const char *big, const char *small) {
     }
     return 0;    
 }
+#endif
 
 REPLACEMENT char *strdup(const char *s) {
     char *buf = malloc(strlen(s) + 1);
@@ -300,6 +204,7 @@ REPLACEMENT char *strdup(const char *s) {
     return buf;
 }
 
+#ifdef DEFINE_INLINES
 REPLACEMENT char *strchr(const char *s, int c) {
     char *p;
     for (p = (char *)s; *p; p++) {
@@ -317,102 +222,9 @@ REPLACEMENT char *strrchr(const char *s, int c) {
     }
     return q;
 }
-
-#define alloca __builtin_alloca
-
-/* errno */
-
-/* From linux */
-#define EPERM            1      /* Operation not permitted */
-#define ENOENT           2      /* No such file or directory */
-#define ESRCH            3      /* No such process */
-#define EINTR            4      /* Interrupted system call */
-#define EIO              5      /* I/O error */
-#define ENXIO            6      /* No such device or address */
-#define E2BIG            7      /* Argument list too long */
-#define ENOEXEC          8      /* Exec format error */
-#define EBADF            9      /* Bad file number */
-#define ECHILD          10      /* No child processes */
-#define EAGAIN          11      /* Try again */
-#define ENOMEM          12      /* Out of memory */
-#define EACCES          13      /* Permission denied */
-#define EFAULT          14      /* Bad address */
-#define ENOTBLK         15      /* Block device required */
-#define EBUSY           16      /* Device or resource busy */
-#define EEXIST          17      /* File exists */
-#define EXDEV           18      /* Cross-device link */
-#define ENODEV          19      /* No such device */
-#define ENOTDIR         20      /* Not a directory */
-#define EISDIR          21      /* Is a directory */
-#define EINVAL          22      /* Invalid argument */
-#define ENFILE          23      /* File table overflow */
-#define EMFILE          24      /* Too many open files */
-#define ENOTTY          25      /* Not a typewriter */
-#define ETXTBSY         26      /* Text file busy */
-#define EFBIG           27      /* File too large */
-#define ENOSPC          28      /* No space left on device */
-#define ESPIPE          29      /* Illegal seek */
-#define EROFS           30      /* Read-only file system */
-#define EMLINK          31      /* Too many links */
-#define EPIPE           32      /* Broken pipe */
-#define EDOM            33      /* Math argument out of domain of func */
-#define ERANGE          34      /* Math result not representable */
+#endif
 
 int sys_nerr = 34;
-
-/* limits */
-
-#define LONG_MAX 2147483647L
-#define LONG_MIN (-LONG_MAX - 1L)
-#define ULONG_MAX 4294967295UL
-
-#define INT_MAX 2147483647
-#define INT_MIN (-INT_MAX - 1)
-#define UINT_MAX 4294967295U
-
-/* fcntl */
-
-/* from Linux */
-#define O_ACCMODE          0003
-#define O_RDONLY             00
-#define O_WRONLY             01
-#define O_RDWR               02
-#define O_CREAT            0100 /* not fcntl */
-#define O_EXCL             0200 /* not fcntl */
-#define O_NOCTTY           0400 /* not fcntl */
-#define O_TRUNC           01000 /* not fcntl */
-#define O_APPEND          02000
-#define O_NONBLOCK        04000
-#define O_NDELAY        O_NONBLOCK
-#define O_SYNC           010000
-#define O_FSYNC          O_SYNC
-#define O_ASYNC          020000
-
-/* system calls */
-
-/* from Linux */
-#define S_IFMT        0170000 /* These bits determine file type.  */
-#define S_IFDIR       0040000 /* Directory.  */
-#define S_IFCHR       0020000 /* Character device.  */
-#define S_IFBLK       0060000 /* Block device.  */
-#define S_IFREG       0100000 /* Regular file.  */
-#define S_IFIFO       0010000 /* FIFO.  */
-#define S_IFLNK       0120000 /* Symbolic link.  */
-#define S_IFSOCK      0140000 /* Socket.  */
-#define S_ISUID       04000   /* Set user ID on execution.  */
-#define S_ISGID       02000   /* Set group ID on execution.  */
-#define S_ISVTX       01000   /* Save swapped text after use (sticky).  */
-#define S_IREAD       0400    /* Read by owner.  */
-#define S_IWRITE      0200    /* Write by owner.  */
-#define S_IEXEC       0100    /* Execute by owner.  */
-
-struct dirent {
-    int d_ino;
-    off_t d_off;
-    unsigned short int d_reclen;
-    unsigned char d_type;
-    char d_name[256]; 
-};
 
 REPLACEMENT int getpagesize() {
     return 8192;
@@ -565,8 +377,6 @@ REPLACEMENT int tolower(int c) {
 
 /* math */
 
-#define HUGE_VAL       (__extension__ 0x1.0p2047)
-
 REPLACEMENT int abs(int x) {
     return x > 0 ? x : -x;
 }
@@ -575,17 +385,7 @@ REPLACEMENT int labs(long x) {
     return x > 0 ? x : -x;
 }
 
-/* stdarg */
-
-#define va_start(v,l)   __builtin_stdarg_start((v),l)
-#define va_end          __builtin_va_end
-#define va_arg          __builtin_va_arg
-#define va_copy(d,s)    __builtin_va_copy((d),(s))
-
 /* stdio */
-
-#define EOF (-1)
-#define BUFSIZ 4096
 
 REPLACEMENT FILE *fopen(const char *path, const char *mode) {
     int fi = outside_fopen(path, mode);
@@ -723,10 +523,6 @@ REPLACEMENT size_t fread(void *ptr, size_t size, size_t num, FILE *stream) {
     int ret = outside_fread(ptr, size, num, *stream);
     return ret;
 }
-
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
 
 REPLACEMENT int fseek(FILE *fp, long offset, int whence) {
     int ret = outside_fseek(*fp, offset, whence);

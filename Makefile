@@ -25,9 +25,12 @@ gen-stubs: stubs.h
 sizes.h: sizes.pm
 	perl -Msizes -e 'sizes::write_header' >sizes.h
 
-%.s:	%-fewer-lines.c libc.c stub-list sizes.h
-#       $(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
-	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*-fewer-lines.c -o $*.s
+%.s:	%.c libc.h stub-list sizes.h
+	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
+#	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*-fewer-lines.c -o $*.s
+
+gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
+	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx gcc-mod-fewer-lines.c -o $@
 
 %-fewer-lines.c:	%.c sizes.h libc.c stubs.h
 	$(CC) -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-fewer-lines.c
@@ -35,12 +38,17 @@ sizes.h: sizes.pm
 %-no-stubs.c:	%.c
 	$(CC) -DNO_STUBS -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.c
 
+libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main libc.s >libc.fis
+
 %.fis:	%.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl $*.s >$*.fis
 
-%.fio:	%.fis
+%.o:	%.fis
 	$(AS) $*.fis -o $*.o
-	ld $(SECTION) $*.o -o $*.fio
+
+%.fio:	%.o libc.o
+	ld $(SECTION) libc.o $*.o -o $*.fio
 
 %.check: %.fio verify.pl x86_common.pm sizes.pm
 	objdump -d $*.fio | perl verify.pl 2>&1 | tee $*.check

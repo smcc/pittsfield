@@ -1,4 +1,4 @@
-#include "libc.c"
+#include "libc.h"
 
 /*-------------------------------------------------------------*/
 /*--- Public header file for the library.                   ---*/
