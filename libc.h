@@ -52,21 +52,15 @@ struct tms {
 
 typedef long int time_t;
 
-struct stat {
-    off_t st_size;
-    int st_mode;
-    time_t st_mtime;
-};
-
-#include "stubs.h"
-
 #include "sizes.h"
 
 #ifdef NO_STUBS
 /* Hide these from outside.c, so it can get the real ones */
-#define REPLACEMENT static
+#define REPLACEMENT
+#define REPLACEMENT_STATIC static
 #else
 #define REPLACEMENT
+#define REPLACEMENT_STATIC static
 #endif
 
 #ifndef NULL
@@ -96,6 +90,105 @@ struct stat {
 #define fwrite myfwrite
 #define rewind myrewind
 #define ungetc myungetc
+#define memchr mymemchr
+
+#define malloc mymalloc
+#define strcpy mystrcpy
+#define strdup mystrdup
+#define memchr mymemchr
+#define memcpy mymemcpy
+#define mempcpy mymempcpy
+#define memmove mymemmove
+#define memset mymemset
+#define memcmp mymemcmp
+#define strerror mystrerror
+#define perror myperror
+#define getenv mygetenv
+#define strlen mystrlen
+#define strcmp mystrcmp
+#define strncmp mystrncmp
+#define strcpy mystrcpy
+#define strncpy mystrncpy
+#define strcat mystrcat
+#define strncat mystrncat
+#define strstr mystrstr
+#define strdup mystrdup
+#define strchr mystrchr
+#define strrchr mystrrchr
+#define getpagesize mygetpagesize
+#define access myaccess
+#define close myclose
+#define fstat myfstat
+#define lseek mylseek
+#define open myopen
+#define read myread
+#define time mytime
+#define times mytimes
+#define opendir myopendir
+#define closedir myclosedir
+#define readdir myreaddir
+#define isupper myisupper
+#define islower myislower
+#define isalpha myisalpha
+#define isdigit myisdigit
+#define isalnum myisalnum
+#define isascii myisascii
+#define isblank myisblank
+#define iscntrl myiscntrl
+#define isgraph myisgraph
+#define isprint myisprint
+#define ispunct myispunct
+#define isspace myisspace
+#define isxdigit myisxdigit
+#define toupper mytoupper
+#define tolower mytolower
+#define abs myabs
+#define labs mylabs
+#define fopen myfopen
+#define fdopen myfdopen
+#define fclose myfclose
+#define ferror myferror
+#define fflush myfflush
+#define fgetc myfgetc
+#define getc mygetc
+#define fputc myfputc
+#define putc myputc
+#define putc_unlocked myputc_unlocked
+#define fputc_unlocked myfputc_unlocked
+#define fputs myfputs
+#define fputs_unlocked myfputs_unlocked
+#define puts myputs
+#define fileno myfileno
+#define fprintf myfprintf
+#define vfprintf myvfprintf
+#define vasprintf myvasprintf
+#define asprintf myasprintf
+#define snprintf mysnprintf
+#define fread myfread
+#define fseek myfseek
+#define ftell myftell
+#define fwrite myfwrite
+#define fwrite_unlocked myfwrite_unlocked
+#define rewind myrewind
+#define ungetc myungetc
+#define gettext mygettext
+#define malloc mymalloc
+#define free myfree
+#define realloc myrealloc
+#define calloc mycalloc
+#define vmalloc myvmalloc
+#define srand mysrand
+#define rand myrand
+#define qsort myqsort
+#define strspn mystrspn
+#define strcspn mystrcspn
+#define strpbrk mystrpbrk
+#define strtoul mystrtoul
+#define strtol mystrtol
+#define atoi myatoi
+#define strcasecmp mystrcasecmp
+#define bsearch mybsearch
+#define struct_stat struct stat
 #endif
 typedef int FILE;
 extern FILE files[16];
@@ -105,12 +198,20 @@ extern FILE *stderr;
 
 REPLACEMENT int fprintf(FILE *stream, const char *format, ...);
 REPLACEMENT void *malloc(size_t nbytes);
-REPLACEMENT char *strcpy(char *buf, const char *src);
+REPLACEMENT_STATIC char *strcpy(char *buf, const char *src);
 REPLACEMENT char *strdup(const char *s);
+
+struct stat {
+    off_t st_size;
+    int st_mode;
+    time_t st_mtime;
+};
+
+#include "stubs.h"
 
 #define assert(e) ((void)((e) ? 0 : abort()))
 
-REPLACEMENT static inline void *memchr(const void *s, int c, size_t n) {
+REPLACEMENT_STATIC inline void *memchr(const void *s, int c, size_t n) {
     int i;
     char *cp = (char *)s;
     for (i = 0; i < n; i++) {
@@ -120,7 +221,7 @@ REPLACEMENT static inline void *memchr(const void *s, int c, size_t n) {
     return 0;
 }
 
-REPLACEMENT static inline void *memcpy(void *dest, const void *src, unsigned int n) {
+REPLACEMENT_STATIC inline void *memcpy(void *dest, const void *src, unsigned int n) {
     int i;
     char *d = dest;
     const char *s = src;
@@ -130,7 +231,7 @@ REPLACEMENT static inline void *memcpy(void *dest, const void *src, unsigned int
     return dest;
 }
 
-REPLACEMENT static inline void *mempcpy(void *dest, const void *src, unsigned int n) {
+REPLACEMENT_STATIC inline void *mempcpy(void *dest, const void *src, unsigned int n) {
     int i;
     char *d = dest;
     const char *s = src;
@@ -140,7 +241,7 @@ REPLACEMENT static inline void *mempcpy(void *dest, const void *src, unsigned in
     return dest + n;
 }
 
-REPLACEMENT static inline void *memmove(void *dest, const void *src, unsigned int n) {
+REPLACEMENT_STATIC inline void *memmove(void *dest, const void *src, unsigned int n) {
     int i;
     char *d = dest;
     const char *s = src;
@@ -156,7 +257,7 @@ REPLACEMENT static inline void *memmove(void *dest, const void *src, unsigned in
     return dest;
 }    
 
-REPLACEMENT static inline void *memset(void *loc, int c, unsigned int n) {
+REPLACEMENT_STATIC inline void *memset(void *loc, int c, unsigned int n) {
     int i;
     char *s = loc;
     for (i = 0; i < n; i++) {
@@ -165,7 +266,7 @@ REPLACEMENT static inline void *memset(void *loc, int c, unsigned int n) {
     return loc;
 }
 
-REPLACEMENT static inline int memcmp(const void *v1, const void *v2, size_t count) {
+REPLACEMENT_STATIC inline int memcmp(const void *v1, const void *v2, size_t count) {
     int i;
     const char *s1 = v1, *s2 = v2;
     for (i = 0; i < count; i++) {
@@ -183,14 +284,14 @@ REPLACEMENT char *strerror(int errnum);
 REPLACEMENT void perror(const char *command);
 REPLACEMENT char *getenv(const char *name);
 
-REPLACEMENT static inline size_t strlen(const char *s) {
+REPLACEMENT_STATIC inline size_t strlen(const char *s) {
     size_t i;
     for (i = 0; *s; s++)
 	i++;
     return i;
 }
 
-REPLACEMENT static inline int strcmp(const char *s1, const char *s2) {
+REPLACEMENT_STATIC inline int strcmp(const char *s1, const char *s2) {
     while (*s1 && *s1 == *s2) {
 	s1++;
 	s2++;
@@ -198,7 +299,7 @@ REPLACEMENT static inline int strcmp(const char *s1, const char *s2) {
     return *s1 - *s2;
 }
 
-REPLACEMENT static inline int strncmp(const char *s1, const char *s2, size_t limit) {
+REPLACEMENT_STATIC inline int strncmp(const char *s1, const char *s2, size_t limit) {
     int i;
     for (i = 0; i < limit; i++) {
 	if (s1[i] != s2[i])
@@ -209,7 +310,7 @@ REPLACEMENT static inline int strncmp(const char *s1, const char *s2, size_t lim
     return 0;
 }
 
-REPLACEMENT static inline char *strcpy(char *buf, const char *src) {
+REPLACEMENT_STATIC inline char *strcpy(char *buf, const char *src) {
     char *p;
     for (p = buf; *src; src++, p++) {
 	*p = *src;
@@ -218,7 +319,7 @@ REPLACEMENT static inline char *strcpy(char *buf, const char *src) {
     return buf;
 }
 
-REPLACEMENT static inline char *strncpy(char *buf, const char *src, size_t limit) {
+REPLACEMENT_STATIC inline char *strncpy(char *buf, const char *src, size_t limit) {
     int i;
     for (i = 0; i < limit; i++) {
 	buf[i] = src[i];
@@ -231,21 +332,21 @@ REPLACEMENT static inline char *strncpy(char *buf, const char *src, size_t limit
     return buf;
 }
 
-REPLACEMENT static inline char *strcat(char *buf, const char *extra) {
+REPLACEMENT_STATIC inline char *strcat(char *buf, const char *extra) {
     char *p = buf;
     p += strlen(p);
     strcpy(p, extra);
     return buf;
 }
 
-REPLACEMENT static inline char *strncat(char *buf, const char *extra, size_t n) {
+REPLACEMENT_STATIC inline char *strncat(char *buf, const char *extra, size_t n) {
     char *p = buf;
     p += strlen(p);
     strncpy(p, extra, n);
     return buf;    
 }
 
-REPLACEMENT static inline const char *strstr(const char *big, const char *small) {
+REPLACEMENT_STATIC inline const char *strstr(const char *big, const char *small) {
     size_t big_len = strlen(big);
     size_t small_len = strlen(small);
     const char *p = big;
@@ -265,7 +366,7 @@ REPLACEMENT static inline const char *strstr(const char *big, const char *small)
 
 REPLACEMENT char *strdup(const char *s);
 
-REPLACEMENT static inline char *strchr(const char *s, int c) {
+REPLACEMENT_STATIC inline char *strchr(const char *s, int c) {
     char *p;
     for (p = (char *)s; *p; p++) {
 	if (*p == c)
@@ -274,7 +375,7 @@ REPLACEMENT static inline char *strchr(const char *s, int c) {
     return 0;
 }
 
-REPLACEMENT static inline char *strrchr(const char *s, int c) {
+REPLACEMENT_STATIC inline char *strrchr(const char *s, int c) {
     char *p, *q = 0;
     for (p = (char *)s; *p; p++) {
 	if (*p == c)
