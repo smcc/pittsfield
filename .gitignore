@@ -27,7 +27,10 @@ _$*
 core
 # CVS default ignores end
 *.out *.s *.fis *.fio *.check
+*-raw *-noebx *-pad *-pad-noebx
 loader
 gen-stubs
 sizes.h
+stub-list
+wrappers.h
 topformflat
