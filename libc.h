@@ -73,6 +73,10 @@ struct stat {
 #define NULL (void*)0
 #endif
 
+#ifndef __STDC__
+#define __STDC__
+#endif
+
 #define offsetof(type,member) ((size_t) &((type*)0)->member)
 
 #ifdef NO_STUBS
@@ -428,6 +432,8 @@ REPLACEMENT int labs(long x);
 
 #define EOF (-1)
 #define BUFSIZ 4096
+
+#define getchar() fgetc(stdin)
 
 REPLACEMENT FILE *fopen(const char *path, const char *mode);
 REPLACEMENT FILE *fdopen(int fd, const char *mode);
