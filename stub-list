@@ -1,0 +1,5 @@
+printf
+print_int
+atoll
+putchar
+__udivdi3
