@@ -26,3 +26,8 @@ _$*
 *.ln
 core
 # CVS default ignores end
+*.out *.s *.fis *.fio *.check
+loader
+gen-stubs
+sizes.h
+topformflat
