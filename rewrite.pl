@@ -13,6 +13,9 @@ my $do_align = 1;
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
 
+my $DATA_ANTI_MASK = sprintf '$0x%08x', ~$data_mask;
+my $JUMP_ANTI_MASK = sprintf '$0x%08x', ~$jump_mask;
+
 my($DATA_START, $CODE_START);
 if ($is_kernel) {
     $DATA_START = '$data_sandbox_start';
@@ -21,6 +24,10 @@ if ($is_kernel) {
     $DATA_START = sprintf '$0x%08x', $data_start;
     $CODE_START = sprintf '$0x%08x', $code_start;
 }
+
+my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
+my $DO_OR = $do_sandbox && ($style eq "andor");
+my $DO_TEST = $do_sandbox && ($style eq "test");
 
 my $is_main = 0;
 if (grep($_ eq "-main", @ARGV)) {
@@ -198,6 +205,41 @@ sub nop_pad {
     }
 }
 
+sub emit {
+    my($insn, $len) = @_;
+    $this_chunk += $len;
+    print "\t$insn\n";
+    #print "\t$insn # e $this_chunk $len\n";
+    if ($this_chunk > $chunk_size) {
+	warn "Possible chunk overflow";
+	print "\t# XXX\n";
+    }
+}
+
+sub maybe_align_for {
+    my($len) = @_;
+    #print "\t# MAF $this_chunk + $len\n";
+    align() if $this_chunk + $len > $chunk_size;
+}
+
+sub a_emit {
+    my($insn, $len) = @_;
+    maybe_align_for($len);
+    emit($insn, $len);
+}
+
+my $label_count = 0;
+my $TEST_LEN = 9;
+
+sub emit_test {
+    my($reg, $anti_mask) = @_;
+    emit("testl\t$anti_mask, $reg", 6 + ($reg eq "(%esp)"));
+    emit("jz .LL$label_count", 2);
+    emit("int3", 1);
+    print ".LL$label_count:\n";
+    $label_count++;
+}
+
 sub maybe_rewrite {
     my($line) = @_;
     chomp $line;
@@ -219,17 +261,17 @@ sub maybe_rewrite {
 	} elsif ($to =~ /^\((%e[sb]p)\)$/) {
 	    return 0;
 	}
- 	align() if $this_chunk + 7 + 6*($style eq "andor") > $chunk_size;
-	print "\tpushf\n" if $precious_eflags;
+	a_emit("pushf", 1) if $precious_eflags;
 	my $size = "l";
 	$size = $1 if $op =~ /([bwl])$/;
-	print "\tleal\t$to, %ebx\n";
-	align();
-	print "\tandl\t$DATA_MASK, %ebx\n" if $style =~ /and/;
-	print "\torl\t$DATA_START, %ebx\n" if $style =~ /or/;
-	print "\t$op\t$from, (%ebx)\n";
-	$this_chunk = 12 + 6*($style eq "andor");
-	$this_chunk++, print "\tpopf\n" if $precious_eflags;
+	a_emit("leal\t$to, %ebx", 7);
+	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST + 
+			$precious_eflags + 6);
+	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
+	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
+	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
+	emit("popf", 1) if $precious_eflags;
+	emit("$op\t$from, (%ebx)", 6);
 	return 1;
     } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
 	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore/) {
@@ -245,19 +287,15 @@ sub maybe_rewrite {
 	} elsif ($target =~ /^\((%e[sb]p)\)$/) {
 	    return 0;
 	}
-	if ($precious_eflags) {
-	    align() if $this_chunk + 1 > $chunk_size;
-	    print "\tpushf\n";
-	    $this_chunk++;
-	}
-	align() if $this_chunk + 6 > $chunk_size;
-	print "\tleal\t$target, %ebx\n";
-	align();
-	print "\tandl\t$DATA_MASK, %ebx\n" if $style =~ /and/;
-	print "\torl\t$DATA_START, %ebx\n" if $style =~ /or/;
-	print "\t$op\t(%ebx)\n";
-	$this_chunk = 9 + 6*($style eq "andor");
-	$this_chunk++, print "\tpopf\n" if $precious_eflags;
+	a_emit("pushf", 1) if $precious_eflags;
+	a_emit("leal\t$target, %ebx", 6);
+	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST +
+			$precious_eflags + 3);
+	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
+	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
+	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
+	emit("popf", 1) if $precious_eflags;
+	emit("$op\t(%ebx)", 3);
 	return 1;
     } elsif ($args =~ /^($immed|$reg), ($lword)$/) {
 	warn "Skipping bogus direct write $op $args";
@@ -267,11 +305,12 @@ sub maybe_rewrite {
 	return 1;
     } elsif ($do_sandbox and $op eq "ret") {
 	$dirty_esp = 0;
-	align();
-	print "\tandl\t$JUMP_MASK, (%esp)\n" if $style =~ /and/;
-	print "\torl\t$CODE_START, (%esp)\n" if $style =~ /or/;
-	print "\tret $args\n";
-	$this_chunk = 9 + 6*($style eq "andor");
+	maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
+			+ (length($args) ? 3 : 1));
+	emit("andl\t$JUMP_MASK, (%esp)", 7) if $DO_AND;
+	emit("orl\t$CODE_START, (%esp)", 7) if $DO_OR;
+	emit_test("(%esp)", $JUMP_ANTI_MASK) if $DO_TEST;
+	emit("ret $args", (length($args) ? 3 : 1));
 	return 1;
     } elsif ($op eq "call") {
 	my $real_call = "";
@@ -282,42 +321,64 @@ sub maybe_rewrite {
 	    $call_len = 5;
 	} elsif ($args =~ /^\*($lab_complex|$reg|$any_const)$/) {
 	    my $target = $1;
-	    print "\tmovl\t$target, %ebx\n";
+	    a_emit("movl\t$target, %ebx", 6);
 	    $real_call .= "\tandl\t$JUMP_MASK, %ebx\n"
-	      if $do_sandbox and $style =~ /and/;
+	      if $DO_AND;
 	    $real_call .= "\torl\t$CODE_START, %ebx\n"
-	      if $do_sandbox and $style =~ /or/;
+	      if $DO_OR;
+	    if ($DO_TEST) {
+		$real_call .= "\ttestl\t$JUMP_ANTI_MASK, %ebx\n";
+		$real_call .= "\tjz .LL$label_count\n";
+		$real_call .= "\tint3\n";
+		$real_call .= ".LL$label_count:\n";
+		$label_count++;
+	    }
 	    $real_call .= "\tcall\t*%ebx\n";
-	    $call_len = $do_sandbox ? 8 + 6*($style eq "andor") : 2;
+	    $call_len = 2 + (6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	} else {
 	    die "Strange call $args";
 	}
-	align();
 	if ($dirty_esp) {
-	    nop_pad($chunk_size - (6 + 6*($style eq "andor")) - $call_len);
-	    print "\tandl\t$DATA_MASK, %esp\n" if $style =~ /and/;
-	    print "\torl\t$DATA_START, %esp\n" if $style =~ /or/;
+	    my $sb_size = (6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+	    if ($call_len + $sb_size <= $chunk_size) {
+		# It will all fit in one chunk
+		align();
+		nop_pad($chunk_size - $sb_size - $call_len);
+		emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
+		emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
+		emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+	    } else {
+		# Need two separate chunks
+		maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+		emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
+		emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
+		emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+		align();
+		nop_pad($chunk_size - $call_len);
+	    }
 	} else {
+	    align();
 	    nop_pad($chunk_size - $call_len);
 	}
 	print "$real_call\n";
+	$this_chunk = 0;
 	$dirty_esp = 0;
 	return 1;
     } elsif ($do_sandbox and $op eq "jmp") {
 	if ($args =~ /^\*($lab_complex)$/) {
 	    my $target = $1;
-	    print "\tmovl\t$target, %ebx\n";
+	    a_emit("movl\t$target, %ebx", 7);
 	} elsif ($args =~ /^\*($reg)$/) {
 	    my $target = $1;
-	    print "\tmovl\t$target, %ebx\n";
+	    a_emit("\tmovl\t$target, %ebx", 7);
 	} else {
 	    return 0;
 	}
-	align();
-	print "\tandl\t$JUMP_MASK, %ebx\n" if $style =~ /and/;
-	print "\torl\t$CODE_START, %ebx\n" if $style =~ /or/;
-	print "\tjmp\t*%ebx\n";
-	$this_chunk = 8 + 6*($style eq "andor");
+	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST + 2);
+	emit("andl\t$JUMP_MASK, %ebx", 6) if $DO_AND;
+	emit("orl\t$CODE_START, %ebx", 6) if $DO_OR;
+	emit_test("%ebx", $JUMP_ANTI_MASK) if $DO_TEST;
+	emit("jmp\t*%ebx", 2);
 	return 1;	
     } else {
 	return 0;
@@ -334,10 +395,14 @@ sub print_stubs {
 	print "$f:\n";
 	printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
 	print "\tpopl\t%ebx\n";
-	print "\tandl\t$JUMP_MASK, %ebx\n" if $style =~ /and/;
-	print "\torl\t$CODE_START, %ebx\n" if $style =~ /or/;
+	print "\t.p2align $log_chunk_size\n" if $style eq "test";
+	$this_chunk = 0;
+	print "\tandl\t$JUMP_MASK, %ebx\n" if $DO_AND;
+	print "\torl\t$CODE_START, %ebx\n" if $DO_OR;
+	emit_test("%ebx", $JUMP_ANTI_MASK) if $DO_TEST;
 	print "\tjmp\t*%ebx\n";
 	print "\t.p2align $log_chunk_size\n";
+	$this_chunk = 0;
 	$i++;
     }
     close STUBS;
@@ -405,10 +470,14 @@ while (<>) {
     } elsif ($do_no_rodata and /^\s+\.section\s+\.note\.GNU-stack/) {
 	next;
     }
-    if ($do_sandbox and $dirty_esp and /^\t(jmp|cmp|inc|dec|add|and|or|test|shr|s[ah]l|sahf)/) {
- 	align() if $this_chunk + 6 + 6*($style eq "andor") > $chunk_size;
-	print("\tandl\t$DATA_MASK, %esp\n"), $this_chunk+=6 if $style =~ /and/;
-	print("\torl\t$DATA_START, %esp\n"), $this_chunk+=6 if $style =~ /or/;
+    if ($dirty_esp
+	and /^\t(jmp|cmp|inc|dec|add|and|or|test|shr|s[ah]l|sahf)/) {
+	if ($do_sandbox) {
+	    maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+	    emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
+	    emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
+	    emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+	}
 	$dirty_esp = 0;
     }
     if (/^\t(push|pop)/) {
@@ -429,7 +498,7 @@ while (<>) {
 	}
 	next if maybe_rewrite($_);
 	$this_chunk += $len;
-	$comment = "# $len" . ($dirty_esp?"d":"") . ($precious_eflags?"f":"");
+	$comment = "# " . ($dirty_esp?"d":"") . ($precious_eflags?"f":"");
     } elsif (/^\t\.p2align 2/) {
 	$this_chunk += 4;
     } elsif (/^($label|\w+):$/) {
@@ -438,23 +507,22 @@ while (<>) {
     chomp;
     print "$_ $comment\n";
     if ($do_sandbox and /\t(leave|popl\s+%ebp)$/) {
-	my $size = ($precious_eflags ? 2 : 0) + 6 + 6*($style eq "andor");
-	align() if $this_chunk + $size > $chunk_size;
-	print "\tpushf\n" if $precious_eflags;
-	print "\tandl\t$DATA_MASK, %ebp\n" if $style =~ /and/;
-	print "\torl\t$DATA_START, %ebp\n" if $style =~ /or/;
-	print "\tpopf\n" if $precious_eflags;
-	$this_chunk += $size;
+	a_emit("pushf", 1) if $precious_eflags;
+	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+	emit("andl\t$DATA_MASK, %ebp", 6) if $DO_AND;
+	emit("orl\t$DATA_START, %ebp", 6) if $DO_OR;
+	emit_test("%ebp", $DATA_ANTI_MASK) if $DO_TEST;
+	a_emit("popf", 1) if $precious_eflags;
     } elsif ($do_sandbox and /^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/) {
-	align() if $this_chunk + 6 + 6*($style eq "andor") > $chunk_size;
-	print "\tandl\t$DATA_MASK, %esp\n" if $style =~ /and/;
-	print "\torl\t$DATA_START, %esp\n" if $style =~ /or/;
-	$this_chunk += 6 + 6*($style eq "andor");
+	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+	emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
+	emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
+	emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
     }
     if (/^\t(test|cmp|dec)/) {
 	$precious_eflags = 1;
     } elsif (/^\tj$cond/) {
 	$precious_eflags = 0;
     }
-    #print "# <$this_chunk>\n";
+    print "# <$.>\n" if ($. % 10) == 0;
 }
