@@ -1,6 +1,8 @@
 #SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000 -e main
 SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000 -e main
 
+VERSION:=0.2
+
 OPT:=-O3 -ffast-math
 DEBUG:=-g
 CC:=gcc
@@ -14,7 +16,7 @@ loader:	loader.c wrappers.h sizes.h high-link.x
 	@#$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
 	$(CC) -Wall -g loader.c -lelf -lm -o loader
 
-wrapper.h: gen-stubs
+wrappers.h: gen-stubs
 stub-list: gen-stubs
 gen-stubs: stubs.h
 	perl index-stubs.pl stubs.h
@@ -50,11 +52,11 @@ libc-no-stubs.o:	libc.c libc.h
 %.fis:	%.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl $*.s >$*.fis
 
-%.o:	%.fis
-	$(AS) $*.fis -o $*.o
+%.mo:	%.fis
+	$(AS) $*.fis -o $*.mo
 
-%.fio:	%.o libc.o
-	ld $(SECTION) libc.o $*.o -o $*.fio
+%.fio:	%.mo libc.mo
+	ld $(SECTION) libc.mo $*.mo -o $*.fio
 
 %.check: %.fio verify.pl x86_common.pm sizes.pm
 	objdump -d $*.fio | perl verify.pl 2>&1 | tee $*.check
@@ -95,3 +97,8 @@ libc-no-stubs.o:	libc.c libc.h
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad-noebx 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./loader $*.fio
+
+dist:
+	mkdir pittsfield-$(VERSION)
+	cp -p `awk '{print $$1}' MANIFEST` pittsfield-$(VERSION)
+	tar cvzf pittsfield-$(VERSION).tar.gz pittsfield-$(VERSION)
