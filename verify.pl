@@ -42,7 +42,12 @@ if ($style eq "and") {
     $ebp_safety = EBP_DATA_XSAFE;
     $esp_safety = ESP_DATA_SAFE;
 } else {
-    die;
+    warn "Verifier is incomplete in TEST mode";
+    $data_safety = 0;
+    $code_safety = 0;
+    $stack_top_safety = 0;
+    $ebp_safety = 0;
+    $esp_safety = 0;
 }
 
 sub check_insn {
@@ -352,7 +357,10 @@ sub check_insn {
 	}
     } elsif ($args =~ /([0-9a-f]{1,8}) <.*>$/) {
 	my $target = hex $1;
-	die "Unaligned literal target" if $target & ($chunk_size - 1);
+	if ($target & ($chunk_size - 1)) {
+	    die "Unaligned literal target"
+	      unless $op eq "je" and $style eq "test";
+	}
 	if ($target < $code_start or $target >= $code_end) {
 	    die "Literal target out of range";
 	}
