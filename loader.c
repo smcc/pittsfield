@@ -390,6 +390,12 @@ clock_t wrap_outside_times(struct tms *buf) {
     return times(buf);
 }
 
+void wrap_fail_check(void) {
+    printf("Program has performed an illegal operation "
+	   "and will be terminated\n");
+    exit(1);
+}
+
 void init_wrappers() {
     files[0] = stdin;
     files[1] = stdout;
@@ -408,7 +414,7 @@ void install_stubs() {
 	   the end of the jump instruction. */
 	int offset = (int)*p - (addr + 4);
 	*((int *)addr) = offset;
-	addr += CHUNK_SIZE;
+	addr += STUB_SIZE;
     }
 }
 
@@ -444,7 +450,7 @@ int main(int argc, char **argv) {
     elf = elf_begin(fd, ELF_C_READ, 0);
     ehdr = elf32_getehdr(elf);
     ph_count = ehdr->e_phnum;
-    assert(ph_count == 2);
+    /*assert(ph_count == 2);*/
     phdr = elf32_getphdr(elf);
 #ifdef CODE_IS_LOWER
     assert(phdr[0].p_type == PT_LOAD);
