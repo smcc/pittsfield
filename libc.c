@@ -266,7 +266,7 @@ REPLACEMENT int read(int fd, void *buf, size_t count) {
     return ret;    
 }
 
-REPLACEMENT int stat(const char *file_name, struct stat *buf) {
+REPLACEMENT int mystat(const char *file_name, struct stat *buf) {
     int ret = outside_stat(file_name, buf);
     refresh_errno();
     return ret;    

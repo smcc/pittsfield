@@ -487,7 +487,7 @@ REPLACEMENT int fstat(int fd, struct stat *buf);
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence);
 REPLACEMENT int open(const char *pathname, int flags, int mode);
 REPLACEMENT int read(int fd, void *buf, size_t count);
-REPLACEMENT int stat(const char *file_name, struct stat *buf);
+REPLACEMENT int mystat(const char *file_name, struct stat *buf);
 REPLACEMENT time_t time(time_t *t);
 REPLACEMENT clock_t times(struct tms *buf);
 
