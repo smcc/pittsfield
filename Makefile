@@ -7,6 +7,7 @@ DEBUG:=-g
 #export CCACHE_DIR=/scratch2/smcc-extras/ccache
 #export CCACHE_LOGFILE=/scratch2/smcc-extras/ccache/ccache.log.smcc
 CC:=gcc
+CXX:=g++ -fno-exceptions -fno-rtti
 #AS:=./as-new
 AS:=as
 #TFF:=/afs/csail.mit.edu/u/s/smcc/old-bin/topformflat
@@ -14,7 +15,7 @@ TFF:=./topformflat
 
 loader:	loader.c wrappers.h sizes.h high-link.x
 	@#$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
-	$(CC) -Wall -g -static loader.c -lelf -lm -o loader
+	$(CC) -Wall -g loader.c -lelf -lm -o loader
 
 wrapper.h: gen-stubs
 stub-list: gen-stubs
@@ -29,6 +30,9 @@ sizes.h: sizes.pm
 	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
 #	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*-fewer-lines.c -o $*.s
 
+%.s:	%.cc libc.h stub-list sizes.h
+	$(CXX) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.cc
+
 gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx gcc-mod-fewer-lines.c -o $@
 
@@ -37,6 +41,9 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 
 %-no-stubs.c:	%.c libc.h
 	$(CC) -DNO_STUBS -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.c
+
+%-no-stubs.cc:	%.cc libc.h
+	$(CXX) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
 
 libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main libc.s >libc.fis
@@ -59,8 +66,14 @@ libc-no-stubs.o:	libc.c libc.h
 %-no-stubs-ebx.s:	%-no-stubs.c
 	$(CC) $(OPT) -S $*-no-stubs.c -o $*-no-stubs-ebx.s
 
+%-no-stubs-ebx.s:	%-no-stubs.cc
+	$(CXX) $(OPT) -S $*-no-stubs.cc -o $*-no-stubs-ebx.s
+
 %-no-ebx.s:	%-no-stubs.c 
 	$(CC) $(OPT) -S --fixed-ebx $*-no-stubs.c -o $*-no-ebx.s
+
+%-no-ebx.s:	%-no-stubs.cc 
+	$(CXX) $(OPT) -S --fixed-ebx $*-no-stubs.cc -o $*-no-ebx.s
 
 %-raw:	%-no-stubs-ebx.s libc-no-stubs.o outside.c
 	$(CC) $(OPT) $*-no-stubs-ebx.s libc-no-stubs.o outside.c -o $*-raw -lm
