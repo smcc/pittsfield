@@ -1,7 +1,9 @@
 typedef signed long ptrdiff_t;
 typedef unsigned int size_t;
 typedef int ssize_t;
+#ifndef __cplusplus
 typedef long wchar_t;
+#endif
 typedef long int off_t;
 typedef int clock_t;
 typedef __builtin_va_list va_list;
@@ -212,7 +214,7 @@ struct stat {
 #define assert(e) ((void)((e) ? 0 : abort()))
 
 REPLACEMENT_STATIC inline void *memchr(const void *s, int c, size_t n) {
-    int i;
+    unsigned i;
     char *cp = (char *)s;
     for (i = 0; i < n; i++) {
 	if (cp[i] == c)
@@ -222,9 +224,9 @@ REPLACEMENT_STATIC inline void *memchr(const void *s, int c, size_t n) {
 }
 
 REPLACEMENT_STATIC inline void *memcpy(void *dest, const void *src, unsigned int n) {
-    int i;
-    char *d = dest;
-    const char *s = src;
+    unsigned i;
+    char *d = (char *)dest;
+    const char *s = (const char *)src;
     for (i = 0; i < n; i++) {
 	d[i] = s[i];
     }
@@ -232,19 +234,19 @@ REPLACEMENT_STATIC inline void *memcpy(void *dest, const void *src, unsigned int
 }
 
 REPLACEMENT_STATIC inline void *mempcpy(void *dest, const void *src, unsigned int n) {
-    int i;
-    char *d = dest;
-    const char *s = src;
+    unsigned i;
+    char *d = (char *)dest;
+    const char *s = (const char *)src;
     for (i = 0; i < n; i++) {
 	d[i] = s[i];
     }
-    return dest + n;
+    return (char *)dest + n;
 }
 
 REPLACEMENT_STATIC inline void *memmove(void *dest, const void *src, unsigned int n) {
-    int i;
-    char *d = dest;
-    const char *s = src;
+    unsigned i;
+    char *d = (char *)dest;
+    const char *s = (const char *)src;
     if (d < s) {
 	for (i = 0; i < n; i++) {
 	    d[i] = s[i];
@@ -258,8 +260,8 @@ REPLACEMENT_STATIC inline void *memmove(void *dest, const void *src, unsigned in
 }    
 
 REPLACEMENT_STATIC inline void *memset(void *loc, int c, unsigned int n) {
-    int i;
-    char *s = loc;
+    unsigned i;
+    char *s = (char *)loc;
     for (i = 0; i < n; i++) {
 	s[i] = c;
     }
@@ -267,8 +269,8 @@ REPLACEMENT_STATIC inline void *memset(void *loc, int c, unsigned int n) {
 }
 
 REPLACEMENT_STATIC inline int memcmp(const void *v1, const void *v2, size_t count) {
-    int i;
-    const char *s1 = v1, *s2 = v2;
+    unsigned i;
+    const char *s1 = (const char *)v1, *s2 = (const char *)v2;
     for (i = 0; i < count; i++) {
 	if (s1[i] != s2[i])
 	    return s1[i] - s2[i];
@@ -300,7 +302,7 @@ REPLACEMENT_STATIC inline int strcmp(const char *s1, const char *s2) {
 }
 
 REPLACEMENT_STATIC inline int strncmp(const char *s1, const char *s2, size_t limit) {
-    int i;
+    unsigned i;
     for (i = 0; i < limit; i++) {
 	if (s1[i] != s2[i])
 	    return s1[i] - s2[i];
@@ -320,7 +322,7 @@ REPLACEMENT_STATIC inline char *strcpy(char *buf, const char *src) {
 }
 
 REPLACEMENT_STATIC inline char *strncpy(char *buf, const char *src, size_t limit) {
-    int i;
+    unsigned i;
     for (i = 0; i < limit; i++) {
 	buf[i] = src[i];
 	if (!src[i])
