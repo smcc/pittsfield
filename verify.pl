@@ -6,20 +6,44 @@ use sizes;
 
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
+my $DATA_START = sprintf '$0x%08x', $data_start;
+my $CODE_START = sprintf '$0x%08x', $code_start;
 
-sub USE_ESP () { 1 }
-sub IJUMP () { 2 }
-sub IWRITE () { 4 }
-sub IREAD ()  { 8 }
-sub USE_EBP () { 16 }
-sub CHANGE_EBP () { 32 }
-sub EBX_DATA_SAFE () { 64 }
-sub EBX_CODE_SAFE () { 128 }
-sub JUMP () { 256 }
-sub EBP_DATA_SAFE () { 512 }
-sub CHANGE_ESP () { 1024 }
-sub BUMP_ESP () { 2048 }
-sub STACK_TOP_SAFE () { 4096 }
+sub USE_ESP         () { 1 << 0 }
+sub IJUMP           () { 1 << 1 }
+sub IWRITE          () { 1 << 2 }
+sub IREAD           () { 1 << 3 }
+sub USE_EBP         () { 1 << 4 }
+sub CHANGE_EBP      () { 1 << 5 }
+sub EBX_DATA_SAFE   () { 1 << 6 }
+sub EBX_CODE_SAFE   () { 1 << 7 }
+sub JUMP            () { 1 << 8 }
+sub EBP_DATA_SAFE   () { 1 << 9 }
+sub CHANGE_ESP      () { 1 << 10 }
+sub BUMP_ESP        () { 1 << 11 }
+sub STACK_TOP_SAFE  () { 1 << 12 }
+sub EBX_DATA_XSAFE  () { 1 << 13 }
+sub EBX_CODE_XSAFE  () { 1 << 14 }
+sub STACK_TOP_XSAFE () { 1 << 15 }
+sub EBP_DATA_XSAFE  () { 1 << 16 }
+sub ESP_DATA_SAFE   () { 1 << 17 }
+
+my($data_safety, $code_safety, $stack_top_safety, $ebp_safety, $esp_safety);
+if ($style eq "and") {
+    $data_safety = EBX_DATA_SAFE;
+    $code_safety = EBX_CODE_SAFE;
+    $stack_top_safety = STACK_TOP_SAFE;
+    $ebp_safety = EBP_DATA_SAFE;
+    $esp_safety = USE_ESP;
+} elsif ($style eq "andor") {
+    $data_safety = EBX_DATA_XSAFE;
+    $code_safety = EBX_CODE_XSAFE;
+    $stack_top_safety = STACK_TOP_XSAFE;
+    $ebp_safety = EBP_DATA_XSAFE;
+    $esp_safety = ESP_DATA_SAFE;
+} else {
+    die;
+}
 
 sub check_insn {
     my($op, $args, $safety, $unsafety) = @_;
@@ -27,7 +51,7 @@ sub check_insn {
 	if ($op eq "nop") {
 	    return 0;
 	} elsif ($op eq "ret") {
-	    if ($safety & STACK_TOP_SAFE) {
+	    if ($safety & $stack_top_safety) {
 		return JUMP|USE_ESP|CHANGE_ESP;
 	    } else {
 		return JUMP|IJUMP|USE_ESP|CHANGE_ESP;
@@ -91,7 +115,7 @@ sub check_insn {
 	if ($op eq "pushl") {
 	    return USE_ESP;
 	} elsif ($op =~ /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore|$fcstore/) {
-	    if ($target eq "(%ebx)" and $safety & EBX_DATA_SAFE) {
+	    if ($target eq "(%ebx)" and $safety & $data_safety) {
 		return $flags;
 	    } elsif ($target =~ /^($lhalf|0xffff[0-9a-f]{4})\(%ebp\)$/) {
 		my $offset = unpack("i", pack("I", hex($1)));
@@ -150,7 +174,7 @@ sub check_insn {
 	if ($op =~ /^mov([sz](bl|wl|bw))?/) {
 	    if ($op eq "mov" and $from eq "%esp" and $to eq "%ebp" and
 		not ($unsafety & (CHANGE_ESP|BUMP_ESP))) {
-		return EBP_DATA_SAFE;
+		return $ebp_safety;
 	    } elsif ($op eq "mov" and $from eq "%ebp" and $to eq "%esp"
 		     and not ($unsafety & CHANGE_EBP)) {
 		return USE_ESP;
@@ -177,14 +201,30 @@ sub check_insn {
 	if ($op eq "mov") {
 	    return $change;
 	} elsif ($op =~ /^$arith8$/) {
-	    if ($op eq "and" and $args eq "$DATA_MASK,%ebx") {
-		return EBX_DATA_SAFE;
-	    } elsif ($op eq "and" and $args eq "$JUMP_MASK,%ebx") {
-		return EBX_CODE_SAFE;
-	    } elsif ($op eq "and" and $args eq "$DATA_MASK,%ebp") {
-		return EBP_DATA_SAFE;
-	    } elsif ($op eq "and" and $args eq "$DATA_MASK,%esp") {
-		return USE_ESP;
+	    if ($op eq "and") {
+		if ($args eq "$DATA_MASK,%ebx") {
+		    return EBX_DATA_SAFE;
+		} elsif ($args eq "$JUMP_MASK,%ebx") {
+		    return EBX_CODE_SAFE;
+		} elsif ($args eq "$DATA_MASK,%ebp") {
+		    return EBP_DATA_SAFE;
+		} elsif ($args eq "$DATA_MASK,%esp") {
+		    return $esp_safety;
+		}
+	    } elsif ($op eq "or") {
+		if ($args eq "$DATA_START,%ebx"
+		    and $safety & EBX_DATA_SAFE) {
+		    return EBX_DATA_XSAFE;
+		} elsif ($args eq "$CODE_START,%ebx"
+		    and $safety & EBX_CODE_SAFE) {
+		    return EBX_CODE_XSAFE;
+		} elsif ($args eq "$DATA_START,%ebp"
+		    and $safety & EBP_DATA_SAFE) {
+		    return EBP_DATA_XSAFE;
+		} elsif ($args eq "$DATA_START,%esp"
+		    and $safety & ESP_DATA_SAFE) {
+		    return USE_ESP;
+		}
 	    }
 	    return $change;
 	} elsif ($op =~ /^($shift|test)$/) {
@@ -205,10 +245,14 @@ sub check_insn {
 	    if ($op eq "andl" and $val eq $JUMP_MASK
 		and ($to = "(%esp,1)" || $to eq "(%esp)")) {
 		return USE_ESP|STACK_TOP_SAFE;
+	    } elsif ($op eq "orl" and $val eq $CODE_START
+		     and ($to = "(%esp,1)" || $to eq "(%esp)")
+		     and $safety & STACK_TOP_SAFE) {
+		return USE_ESP|STACK_TOP_XSAFE;
 	    } elsif (abs($offset) < 127) {
 		$simple = USE_ESP;
 	    }
-	} elsif ($to eq "(%ebx)" and $safety & EBX_DATA_SAFE) {
+	} elsif ($to eq "(%ebx)" and $safety & $data_safety) {
 	    return 0;
 	}
 	if ($op =~ /^mov[bwl]?$/) {
@@ -291,7 +335,7 @@ sub check_insn {
 	    if (abs($offset) < 127) {
 		$simple = USE_ESP;
 	    }
-	} elsif ($to eq "(%ebx)" and $safety & EBX_DATA_SAFE) {
+	} elsif ($to eq "(%ebx)" and $safety & $data_safety) {
 	    return 0;
 	}
 	if ($op =~ /^mov[bwl]?$/) {
@@ -319,7 +363,7 @@ sub check_insn {
 	my $target = $1;
 	my $flags = JUMP;
 	$flags |= USE_ESP if $op eq "call";
-	if ($target eq "%ebx" and $safety & EBX_CODE_SAFE) {
+	if ($target eq "%ebx" and $safety & $code_safety) {
 	    return $flags;
 	} else {
 	    return IJUMP|$flags;
@@ -349,7 +393,8 @@ while (<>) {
 	my $args = $3;
 	$safety = 0 if $addr == $next_aligned;
 	if ($unsafety & CHANGE_EBP and $args =~ /%ebp/ and 
-	    not($op eq "and" and $args eq "$DATA_MASK,%ebp")) {
+	    !($op eq "and" and $args eq "$DATA_MASK,%ebp") and
+	    !($op eq "or" and $args eq "$DATA_START,%ebp" )) {
 	    printf "Use of unsafe %%ebp at 0x%08x\n", $addr;
 	}
 	if ($unsafety & CHANGE_ESP and
@@ -369,13 +414,15 @@ while (<>) {
 	if ($flags & JUMP and $unsafety & (CHANGE_ESP|BUMP_ESP)) {
 	    printf "Unsafe %%esp escapes by jump at 0x%08x\n", $addr;
 	}
-	$safety = $flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE);
+	$safety = $flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE|
+			    EBX_DATA_XSAFE|EBX_CODE_XSAFE|STACK_TOP_XSAFE|
+			    EBP_DATA_SAFE|ESP_DATA_SAFE);
 	$unsafety |= $flags & (CHANGE_EBP|CHANGE_ESP|BUMP_ESP);
 	$bump_count++ if $flags & BUMP_ESP;
 	$unsafety |= CHANGE_ESP if $bump_count >= 250;
 	$unsafety &= ~(CHANGE_ESP|BUMP_ESP) if $flags & USE_ESP;
 	$bump_count = 0 if $flags & USE_ESP;
-	$unsafety &= ~CHANGE_EBP if $flags & EBP_DATA_SAFE;
+	$unsafety &= ~CHANGE_EBP if $flags & $ebp_safety;
 	if ($addr > $next_aligned) {
 	    printf "Missing instruction at %08x\n", $next_aligned;
 	    die;
