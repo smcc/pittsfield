@@ -1,16 +1,19 @@
 package x86_common;
 require Exporter;
 our @ISA = "Exporter";
-our @EXPORT = qw($ereg $breg
+our @EXPORT = qw($ereg $ereg_no_esp $breg $freg
 		 $arith8 $arith8l $arith $arithl
-		 $shift $unary
+		 $shift $dshift $unary $convert
+		 $fbin $fload $fstore $fconst $funary $fcstore $fcload
 		 $cond $label
-		 $b_sign $eb_off $imb_sign
+		 $b_sign $eb_off $e_off $imb_sign $any_const
 		 $lbyte $lhalf $lword $reg $immed $complex $lab_complex);
 
 our $ereg = qr/%(?:e[abcd]x|e[sd]i|esp|ebp)/;
+our $ereg_no_esp = qr/%(?:e[abcd]x|e[sd]i|ebp)/;
 our $wreg = qr/%(?:[abcd]x|[sd]i|sp|bp)/;
 our $breg = qr/%(?:[abcd][lh])/;
+our $freg = qr/%st(?:\([0-7]\))?/;
 
 our $arith8 = qr/(?:add|adc|and|xor|or|sbb|sub|cmp)/;
 our $arith8l = qr/${arith8}l/;
@@ -18,7 +21,17 @@ our $ariths = qr/(?:i?mul|i?div)/;
 our $arith = qr/(?:$arith8|$ariths|test)/;
 our $arithl = qr/${arith}l/;
 our $shift = qr/(?:rol|ror|rcl|rcr|shl|sal|shr|sar)/;
-our $unary = qr/(?:pushl?|popl?|incl?|decl?|not|neg)/;
+our $dshift = qr/$shift(?:d)/;
+our $unary = qr/(?:pushl?|popl?|inc(?:b|w|l|)|dec(?:b|w|l|)|not|neg)/;
+our $convert = qr/(?:cwtl|cltd)/;
+
+our $fbin = qr/(?:f(?:add|mul|divr?|subr?)(?:s|l|)p?)/;
+our $fstore = qr/(?:fi?stp?(?:s|l|ll|))/;
+our $fload = qr/(?:fi?ld(?:s|l|ll|))/;
+our $fconst = qr/fld(?:1|l2t|l2e|pi|lg2|ln2|z)/;
+our $funary = qr/f(?:xch|abs|chs|cos|sin|sqrt|comp{0,2}(?:s|l|)|ucomp{0,2})/;
+our $fcstore = qr/fn?st[sc]w/;
+our $fcload = qr/fldcw/;
 
 our $cond = qr/n?(?:o|b|c|ae|z|e|be|a|s|p|pe|po|l|ge|le|g)/;
 our $label = qr/\.L\d+/;
@@ -29,15 +42,16 @@ our $w_sign = qr/-?\d+/;
 our $b_hex = qr/0x[0-9a-f][0-9a-f]?/;
 our $h_hex = qr/0x[0-9a-f]{1,4}/;
 our $w_hex = qr/0x[0-9a-f]{1,8}/;
-our $eb_off = qr/$b_sign\($ereg\)/;
+our $eb_off = qr/$b_sign\($ereg_no_esp\)/;
+our $e_off = qr/$w_sign\($ereg_no_esp\)/;
 our $imb_sign = qr/\$$b_sign/;
 
 our $lbyte = qr/(?:$b_sign|$b_hex)/;
 our $lhalf = qr/(?:$h_sign|$h_hex)/;
 our $lword = qr/(?:$w_sign|$w_hex)/;
-our $any_const = qr/(?:$lbyte|$lword|.L\w+|\w+)/;
+our $any_const = qr/(?:$lbyte|$lword|.L\w+|[\w+\.-]+)(?:[+-]\d+)?/;
 our $immed = qr/\$$any_const/;
-our $reg = qr/$ereg|$wreg|$breg/;
+our $reg = qr/$ereg|$wreg|$breg|$freg/;
 our $complex = qr/(?:$lbyte|$lword)?\((?:$ereg)?(?:,$ereg)?(?:,[1248])?\)/;
 our $lab_complex = qr/(?:$any_const)?\((?:$ereg)?(?:,$ereg)?(?:,[1248])?\)/;
 

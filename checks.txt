@@ -1,0 +1,272 @@
+The data region is 0x2000_0000 thorough 0x20ff_ffff inclusive
+
+The code region is 0x1000_0000 thorough 0x10ff_ffff inclusive
+
+The zero-tag region is 0x0000_0000 thorough 0x00ff_ffff inclusive
+We assume that reads and writes to the zero-tag region are safe (such
+as by causing termination, or being no-ops), and that jumps to the
+zero-tag region cause safe termination.
+
+The guard page regions are 64k immediately before and after the data
+and zero-tag regions, wrapping around:
+0xffff_0000 - 0xffff_ffff
+0x0100_0000 - 0x0100_ffff
+0x19ff_0000 - 0x19ff_ffff
+0x2100_0000 - 0x2100_ffff
+We assume that any read or write a guard page region immediately
+causes safe termination.
+
+The safety policy is that only bytes in the data region (and
+potentially the zero-tag region) are written to, and only instructions
+in the code region are executed.
+
+------------------------------------------------------------------------
+
+Global invariants (hold immediately after every jump):
+I1. %ebp points at the data region or the zero-tag region.
+I2. %esp points at the data region or the zero-tag region.
+I3. %eip points at the code region or the zero-tag region, and is
+    chunk-aligned.
+
+There are 4 weakenings of the global invariant that are allowed to
+hold in limited circumstances:
+
+W1. %ebp points anywhere.
+W2. %esp points anywhere.
+W3. %esp points at the data region, the zero-tag region, or a guard
+    region (but nowhere else).
+W4. %eip points at the code region or the zero-tag region, and if in
+    the code region, points at an instruction (but might not be
+    aligned).
+
+There are also 3 strengthenings of the global invariant:
+
+S1. %ebx points at the code region, and is chunk-aligned.
+S2. %ebx points at the data region.
+S3. The word on the top of the stack ("(%esp)") points at the code
+    region or the zero-tag region, and is chunk-aligned
+
+the strengthenings only need to be considered between two adjacent
+instructions; they can be thought of as being killed by any
+instruction that doesn't establish them.
+
+Instructions weaken and strengthen the invariants as follows:
+
+* Any instruction that modifies %ebp weakens to W1, except for
+  "and $0x20ffffff, %ebp", which kills W1, and "mov %esp, %ebp", which
+  weakens to W1 only if W2 or W3 holds.
+
+* Most instructions that modify %esp weaken to W2, except that
+  instructions that modify %esp by changing it by an amount
+  of absolute value at most 256 weaken it only to W3, as long as at
+  most 255 of them occur in a row, and "mov %ebp, %esp", which
+  instead kills W2 and W3 if W1 does not hold.
+
+* Any instruction that pushes or pops through %esp kills W2 and W3, as
+  does "and $0x20ffffff, %esp".
+
+* Any instruction that can fall though to the next instruction weakens
+  to W4.
+
+* The instruction "and $0x10ffff00, %ebx" establishes S1, and any
+  other instruction kills it.
+
+* The instruction "and $0x20ffffff, %ebx" establishes S2, and any
+  other instruction kills it.
+
+* The instruction "and $0x10ffff00, (%esp)" establishes S3, and any
+  other instruction kills it.
+
+The weakenings and strengthenings affect which instructions are
+allowed as follows:
+
+* An indirect jump is allowed only if the target is "*%ebx", and S1
+  holds.
+
+* An indirect write is allowed only if one of the following holds:
+  - The target is "(%ebx)", and S2 holds.
+  - The target is "off(%ebp)", for some constant off with abs(off) <
+    64k, and W1 doesn't hold.
+  - The target is "off(%esp)", for some constant off with abs(off) <
+    256, and W3 doesn't hold.
+
+* No instruction that uses the stack is allowed if W3 holds.
+
+* A return is allowed only if S3 holds.
+
+In addition, there are the following general restrictions:
+
+* The code region must consist of a single sequence of legal
+  instructions.
+
+* An instruction in the above sequence must appear at each
+  chunk-aligned address in the code region.
+
+* Direct jumps (and branches) must point only to chunk-aligned
+  addresses in the code region.
+
+* Direct writes must point only to addresses in the data region.
+
+* No multimedia instructions are allowed.
+
+* No instructions with segment specifiers are allowed.
+
+* No 16-bit-mode instructions are allowed.
+
+* No string instructions are allowed.
+
+* No system, I/O, or interrupt-related instructions are allowed.
+
+------------------------------------------------------------------------
+
+We check these properties with a single pass over the code region,
+essentially a finite state machine. At each instruction, we reject if
+we've gone past the address of a chunk-aligned instruction without
+seeing it; otherwise, the checks performed are summarized below.
+
+We'll use the following abbreviations for instruction operands:
+
+REG       General-purpose or floating-point register
+IMMED     Immediate value
+DIRECT    Direct address
+COMPLEX   Indirect memory access of any kind, no segments
+
+We'll use the following abbreviations for classes of instruction:
+
+ARITH8    add adc and xor or sbb sub cmp
+MULDIV    mul div imul idiv
+ARITH     ARITH MULDIV test
+SHIFT     rol ror rcl rcr shl sal shr sar
+DSHIFT    rold rord rcld rcrd shld sald shrd sard
+UNARY     push pop inc dec not neg
+CONVERT   cwtl cltd
+MOV       mov movsbl movswl movsbw movzbl movzwl movzbw
+FBIN      fadd fmul fsub fsubr fdiv fdivr
+FSTORE    fst fstp fist fistp
+FLOAD     fld fild
+FCONST    fld1 fldl2t fldl2e fldpi flglg2 fldln2 fldz
+FUNARY    fxch fabs fchs fcos fsin fsqrt fcom fcomp fcompp fucom
+          fucomp fucompp
+FCSTORE   fstsw fstcw fnstsw fnstcw
+COND      <any branch condition; e, ne, l, le, g, ge, etc.>
+
+In addition, the patterns below ignore any operand size suffixes (for
+instance, "add" matches "addl").
+
+For each instruction we'll give preconditions PRE and postconditions
+POST. The following abbreviate these conditions:
+
+USE_ESP        PRE !W2, POST !W2, !W3, bump_count = 0
+USE_EBP        PRE !W1
+JUMP           PRE !W1, !W2, !W3
+CHANGE_EBP     POST W1
+BUMP_ESP       POST W3, bump_count++
+CHANGE_ESP     POST W2
+CHANGE         CHANGE_ESP if target regs include %esp,
+                 respectively CHANGE_EBP/%ebp
+DATA_OK        PRE DIRECT is a legal data region address
+CODE_OK        PRE DIRECT is a legal, aligned code region address
+
+Weakenings persist until explicitly cleared. Strengthenings expire
+after one instruction. When bump_count exceeds 254, W2 is set.
+
+The following instruction patterns are allowed, with the given
+additional conditions and effects:
+
+nop
+ret
+  JUMP, PRE S3
+leave
+  USE_ESP, CHANGE_EBP
+pushf/popf
+  USE_ESP
+CONVERT
+FCONST
+FUNARY
+sahf
+push REG
+  USE_ESP
+pop REG
+  CHANGE, USE_ESP
+inc/dec/not/neg/SHIFT/MULDIV/setCOND REG
+  CHANGE
+FSTORE/FCSTORE/FUNARY/FLOAD REG
+  CHANGE
+push IMMED
+  USE_ESP
+push COMPLEX
+  USE_ESP
+FLOAD/fldcw/FBIN/FUNARY COMPLEX
+UNARY/SHIFT/setCOND/FSTORE/FCSTORE (%ebx)
+  PRE S2
+UNARY/SHIFT/setCOND/FSTORE/FCSTORE off(%ebp)
+  PRE abs(off) < 64k and !W1
+UNARY/SHIFT/setCOND/FSTORE/FCSTORE off(%esp)
+  PRE abs(off) < 256 and !W2
+MULDIV IMMED, REG, REG
+  CHANGE
+DSHIFT IMMED, REG, REG
+  CHANGE
+DSHIFT REG, REG, REG
+  CHANGE
+MULDIV IMMED, COMPLEX, REG
+  CHANGE
+mov %esp, %ebp
+  POST !W1 (if !W2 and !W3)
+mov %ebp, %esp
+  POST !W2, !W3 (if !W1)
+MOV REG, REG
+  CHANGE (otherwise)
+ARITH/SHIFT/FBIN REG, REG
+  CHANGE
+add/sub byte, %esp
+  BUMP_ESP (if abs(byte) < 256)
+and $0xfffffff0, %esp
+  BUMP_ESP
+and $0x20ffffff, %ebx
+  POST S2
+and $0x10fffff0, %ebx
+  POST S1
+and $0x20ffffff, %ebp
+  POST !W1
+and $0x20ffffff, %esp
+  POST !W2, !W3
+MOV/ARITH8/SHIFT/TEST IMMED, REG
+  CHANGE (otherwise)
+cmp IMMED, COMPLEX
+MOV/ARITH/SHIFT IMMED, (%ebx)
+  PRE S2
+MOV/ARITH/SHIFT IMMED, off(%ebp)
+  PRE abs(off) < 64k and !W1
+and $0x10fffff0, (%esp)
+  PRE !W2, POST S3
+MOV/ARITH/SHIFT IMMED, off(%esp)
+  PRE abs(off) < 256 and !W2 (otherwise)
+pushl DIRECT
+  USE_ESP, DATA_OK
+UNARY/FLOAD/FBIN/FUNARY
+  DATA_OK
+mov DIRECT, REG
+  DATA_OK, CHANGE
+mov REG, DIRECT
+  DATA_OK
+mov IMMED, DIRECT
+  DATA_OK
+lea off(%esp), %esp
+  BUMP_ESP (if abs(off) < 256)
+MOV/ARITH/lea COMPLEX, REG
+  CHANGE (otherwise)
+MOV/ARITH/SHIFT REG, (%ebx)
+  PRE S2
+MOV/ARITH/SHIFT REG, off(%ebp)
+  PRE abs(off) < 64k and !W1
+MOV/ARITH/SHIFT REG, off(%esp)
+  PRE abs(off) < 256 and !W2
+jmp/jCOND DIRECT
+  CODE_OK
+call DIRECT
+  CODE_OK, USE_ESP
+call *%ebx
+  PRE S1, USE_ESP
+jmp *%ebx
+  PRE S1
