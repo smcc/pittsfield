@@ -226,7 +226,7 @@ void MD5Transform(uint32 *buf, uint32 *in)
     buf[3] += d;
 }
 
-#define SIZE 16000000
+#define SIZE 15728640
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 char data[SIZE];
@@ -252,7 +252,10 @@ int main() {
     MD5Final(signature, &md5c);
     
     sig = *((int *)signature);
-    printf("%d\n", sig);
+    for (i = 0; i < 16; i++) {
+      printf("%02x ", signature[i]);
+    }
+    printf("\n");
 
     return sig;
 }
