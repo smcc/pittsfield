@@ -3,6 +3,7 @@ MANIFEST		List of files to distribute
 COPYING			GNU General Public License
 Makefile		Script for compiling and fault-isolating
 high-link.x		Linker script to relocate to a high address
+hw-mod.c		Very simple example module
 libc.c			In-sandbox side of C library (implementation)
 libc.h			In-sandbox side of C library (declarations)
 loader.c		Application to load sandboxed binaries
