@@ -58,3 +58,5 @@ int outside_ungetc(int c, int fi);
 int outside_vasprintf(char **strp, const char *fmt, va_list ap);
 int outside_vfprintf(int fi, const char *fmt, va_list ap);
 int outside_vsnprintf(char *str, size_t size, const char *format, va_list ap);
+
+void fail_check(void);
