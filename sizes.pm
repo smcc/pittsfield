@@ -45,7 +45,7 @@ our $is_kernel = 0;
 # our $is_kernel = 1;
 
 our $log_chunk_size = 4;
-our $style = "test";
+our $style = "and";
 
 our $code_start = $code_tag << $log_code_size;
 our $data_start = $data_tag << $log_data_size;
@@ -61,7 +61,7 @@ our $jump_mask = ($code_start | ($code_size - 1))
 our $chunk_size = 1 << $log_chunk_size;
 
 our $log_stub_size = $log_chunk_size;
-$log_stub_size = 5 if $style eq "test";
+$log_stub_size = $log_chunk_size+1 if $style eq "test";
 
 our $stub_size = 1 << $log_stub_size;
 
