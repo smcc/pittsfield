@@ -6,13 +6,14 @@ require Exporter;
 our @ISA = "Exporter";
 our @EXPORT = qw($code_start $data_start $code_size $code_size
 		 $code_end $data_end
-		 $data_mask $jump_mask $chunk_size);
+		 $style
+		 $data_mask $jump_mask $log_chunk_size $chunk_size);
 
 # Classic
-# my $log_code_size = 24;
-# my $code_tag = 0x10;
-# my $log_data_size = 24;
-# my $data_tag = 0x20;
+my $log_code_size = 24;
+my $code_tag = 0x10;
+my $log_data_size = 24;
+my $data_tag = 0x20;
 
 # Biggest data safe with standard code location
 # my $log_code_size = 24;
@@ -21,19 +22,19 @@ our @EXPORT = qw($code_start $data_start $code_size $code_size
 # my $data_tag = 0x4;
 
 # Biggest data compatible with usual libc location
-my $log_code_size = 24;
-my $code_tag = 0x10;
-my $log_data_size = 29;
-my $data_tag = 0x1;
+# my $log_code_size = 24;
+# my $code_tag = 0x10;
+# my $log_data_size = 29;
+# my $data_tag = 0x1;
 
 # 1GB data, assumes loader moved to 0xa0000000 or so
-my $log_code_size = 24;
-my $code_tag = 0x90;
-my $log_data_size = 30;
-my $data_tag = 0x1;
+# my $log_code_size = 24;
+# my $code_tag = 0x90;
+# my $log_data_size = 30;
+# my $data_tag = 0x1;
 
-my $log_chunk_size = 4;
-
+our $log_chunk_size = 5;
+our $style = "andor";
 
 our $code_start = $code_tag << $log_code_size;
 our $data_start = $data_tag << $log_data_size;
@@ -59,6 +60,7 @@ sub write_header {
     printf "#define CODE_SIZE  0x%08x\n", $code_size;
     printf "#define DATA_START 0x%08x\n", $data_start;
     printf "#define DATA_SIZE  0x%08x\n", $data_size;
+    printf "#define CHUNK_SIZE  0x%x\n", $chunk_size;
     if ($code_start < $data_start) {
 	print "#define CODE_IS_LOWER\n";
     } else {

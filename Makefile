@@ -1,4 +1,5 @@
-SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000 -e main
+#SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000 -e main
+SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000 -e main
 
 OPT:=-O3 -ffast-math
 DEBUG:=-g
@@ -6,11 +7,13 @@ DEBUG:=-g
 #export CCACHE_DIR=/scratch2/smcc-extras/ccache
 #export CCACHE_LOGFILE=/scratch2/smcc-extras/ccache/ccache.log.smcc
 CC:=gcc
+AS:=./as-new
 #TFF:=/afs/csail.mit.edu/u/s/smcc/old-bin/topformflat
 TFF:=./topformflat
 
 loader:	loader.c wrapper.h sizes.h high-link.x
-	$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
+	@#$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
+	$(CC) -Wall -g -static loader.c -lelf -lm -o loader
 
 wrapper.h: gen-stubs
 stub-list: gen-stubs
@@ -25,7 +28,7 @@ sizes.h: sizes.pm
 #       $(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
 	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*-fewer-lines.c -o $*.s
 
-%-fewer-lines.c:	%.c
+%-fewer-lines.c:	%.c sizes.h libc.c stubs.h
 	$(CC) -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-fewer-lines.c
 
 %-no-stubs.c:	%.c
@@ -35,7 +38,7 @@ sizes.h: sizes.pm
 	perl rewrite.pl $*.s >$*.fis
 
 %.fio:	%.fis
-	as $*.fis -o $*.o
+	$(AS) $*.fis -o $*.o
 	ld $(SECTION) $*.o -o $*.fio
 
 %.check: %.fio verify.pl x86_common.pm sizes.pm

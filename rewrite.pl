@@ -12,6 +12,8 @@ my $do_align = 1;
 
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
+my $DATA_START = sprintf '$0x%08x', $data_start;
+my $CODE_START = sprintf '$0x%08x', $code_start;
 
 sub insn_len {
     my($line) = @_;
@@ -142,7 +144,8 @@ sub insn_len {
 my $this_chunk = 0;
 
 sub align {
-    print "\t.p2align 4\n" if $do_align;
+    print "\t.p2align $log_chunk_size\n" if $do_align;
+    #print "\t.p2align $log_chunk_size, 0x90\n" if $do_align;
     $this_chunk = 0;
 }
 
@@ -203,15 +206,16 @@ sub maybe_rewrite {
 	} elsif ($to =~ /^\((%e[sb]p)\)$/) {
 	    return 0;
 	}
- 	align() if $this_chunk + 7 > $chunk_size;
+ 	align() if $this_chunk + 7 + 6*($style eq "andor") > $chunk_size;
 	print "\tpushf\n" if $precious_eflags;
 	my $size = "l";
 	$size = $1 if $op =~ /([bwl])$/;
 	print "\tleal\t$to, %ebx\n";
 	align();
-	print "\tandl\t$DATA_MASK, %ebx\n";
+	print "\tandl\t$DATA_MASK, %ebx\n" if $style =~ /and/;
+	print "\torl\t$DATA_START, %ebx\n" if $style =~ /or/;
 	print "\t$op\t$from, (%ebx)\n";
-	$this_chunk = 12;
+	$this_chunk = 12 + 6*($style eq "andor");
 	$this_chunk++, print "\tpopf\n" if $precious_eflags;
 	return 1;
     } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
@@ -236,9 +240,10 @@ sub maybe_rewrite {
 	align() if $this_chunk + 6 > $chunk_size;
 	print "\tleal\t$target, %ebx\n";
 	align();
-	print "\tandl\t$DATA_MASK, %ebx\n";
+	print "\tandl\t$DATA_MASK, %ebx\n" if $style =~ /and/;
+	print "\torl\t$DATA_START, %ebx\n" if $style =~ /or/;
 	print "\t$op\t(%ebx)\n";
-	$this_chunk = 9;
+	$this_chunk = 9 + 6*($style eq "andor");
 	$this_chunk++, print "\tpopf\n" if $precious_eflags;
 	return 1;
     } elsif ($args =~ /^($immed|$reg), ($lword)$/) {
@@ -250,9 +255,10 @@ sub maybe_rewrite {
     } elsif ($do_sandbox and $op eq "ret") {
 	$dirty_esp = 0;
 	align();
-	print "\tandl\t$JUMP_MASK, (%esp)\n";
+	print "\tandl\t$JUMP_MASK, (%esp)\n" if $style =~ /and/;
+	print "\torl\t$CODE_START, (%esp)\n" if $style =~ /or/;
 	print "\tret $args\n";
-	$this_chunk = 9;
+	$this_chunk = 9 + 6*($style eq "andor");
 	return 1;
     } elsif ($op eq "call") {
 	my $real_call = "";
@@ -264,16 +270,20 @@ sub maybe_rewrite {
 	} elsif ($args =~ /^\*($lab_complex|$reg|$any_const)$/) {
 	    my $target = $1;
 	    print "\tmovl\t$target, %ebx\n";
-	    $real_call .= "\tandl\t$JUMP_MASK, %ebx\n" if $do_sandbox;
+	    $real_call .= "\tandl\t$JUMP_MASK, %ebx\n"
+	      if $do_sandbox and $style =~ /and/;
+	    $real_call .= "\torl\t$CODE_START, %ebx\n"
+	      if $do_sandbox and $style =~ /or/;
 	    $real_call .= "\tcall\t*%ebx\n";
-	    $call_len = $do_sandbox ? 8 : 2; # andl; FF 13
+	    $call_len = $do_sandbox ? 8 + 6*($style eq "andor") : 2;
 	} else {
 	    die "Strange call $args";
 	}
 	align();
 	if ($dirty_esp) {
-	    nop_pad($chunk_size - 6 - $call_len);
-	    print "\tandl\t$DATA_MASK, %esp\n";
+	    nop_pad($chunk_size - (6 + 6*($style eq "andor")) - $call_len);
+	    print "\tandl\t$DATA_MASK, %esp\n" if $style =~ /and/;
+	    print "\torl\t$DATA_START, %esp\n" if $style =~ /or/;
 	} else {
 	    nop_pad($chunk_size - $call_len);
 	}
@@ -291,9 +301,10 @@ sub maybe_rewrite {
 	    return 0;
 	}
 	align();
-	print "\tandl\t$JUMP_MASK, %ebx\n";
+	print "\tandl\t$JUMP_MASK, %ebx\n" if $style =~ /and/;
+	print "\torl\t$CODE_START, %ebx\n" if $style =~ /or/;
 	print "\tjmp\t*%ebx\n";
-	$this_chunk = 8;
+	$this_chunk = 8 + 6*($style eq "andor");
 	return 1;	
     } else {
 	return 0;
@@ -305,10 +316,10 @@ while (<>) {
     print;
 }
 print;
-nop_pad(11);
+nop_pad($chunk_size - 5);
 print "\tcall main\n"; # 5 bytes
 print "\tret\n";
-print "\t.p2align 4\n";
+print "\t.p2align 5\n";
 
 open(STUBS, "<stub-list");
 my $i = 0;
@@ -316,11 +327,13 @@ while (<STUBS>) {
     my $f = $_;
     chomp $f;
     print "$f:\n";
-    printf "\tjmp\t0x%08x\n", $code_start + ($i << 4);
+    printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
     print "\tpopl\t%ebx\n";
-    print "\tandl\t$JUMP_MASK, %ebx\n";
+    print "\tandl\t$JUMP_MASK, %ebx\n" if $style =~ /and/;
+    print "\torl\t$CODE_START, %ebx\n" if $style =~ /or/;
     print "\tjmp\t*%ebx\n";
-    print "\t.p2align 4\n";
+    print "\t.p2align $log_chunk_size\n";
+    $i++;
 }
 close STUBS;
 
@@ -333,9 +346,9 @@ while (<>) {
 	next;
     }
     if ($do_sandbox and $dirty_esp and /^\t(jmp|cmp|inc|dec|add|and|or|test|shr|s[ah]l|sahf)/) {
- 	align() if $this_chunk + 6 > $chunk_size;
- 	print "\tandl\t$DATA_MASK, %esp\n";
- 	$this_chunk += 6;
+ 	align() if $this_chunk + 6 + 6*($style eq "andor") > $chunk_size;
+	print("\tandl\t$DATA_MASK, %esp\n"), $this_chunk+=6 if $style =~ /and/;
+	print("\torl\t$DATA_START, %esp\n"), $this_chunk+=6 if $style =~ /or/;
 	$dirty_esp = 0;
     }
     if (/^\t(push|pop)/) {
@@ -356,7 +369,7 @@ while (<>) {
 	}
 	next if maybe_rewrite($_);
 	$this_chunk += $len;
-	$comment = "# $len";
+	$comment = "# $len" . ($dirty_esp?"d":"") . ($precious_eflags?"f":"");
     } elsif (/^\t\.p2align 2/) {
 	$this_chunk += 4;
     } elsif (/^($label|\w+):$/) {
@@ -365,16 +378,18 @@ while (<>) {
     chomp;
     print "$_ $comment\n";
     if ($do_sandbox and /\t(leave|popl\s+%ebp)$/) {
-	my $size = $precious_eflags ? 8 : 6;
+	my $size = ($precious_eflags ? 2 : 0) + 6 + 6*($style eq "andor");
 	align() if $this_chunk + $size > $chunk_size;
 	print "\tpushf\n" if $precious_eflags;
-	print "\tandl\t$DATA_MASK, %ebp\n";
+	print "\tandl\t$DATA_MASK, %ebp\n" if $style =~ /and/;
+	print "\torl\t$DATA_START, %ebp\n" if $style =~ /or/;
 	print "\tpopf\n" if $precious_eflags;
 	$this_chunk += $size;
     } elsif ($do_sandbox and /^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/) {
-	align() if $this_chunk + 6 > $chunk_size;
-	print "\tandl\t$DATA_MASK, %esp\n";
-	$this_chunk += 6;	
+	align() if $this_chunk + 6 + 6*($style eq "andor") > $chunk_size;
+	print "\tandl\t$DATA_MASK, %esp\n" if $style =~ /and/;
+	print "\torl\t$DATA_START, %esp\n" if $style =~ /or/;
+	$this_chunk += 6 + 6*($style eq "andor");
     }
     if (/^\t(test|cmp|dec)/) {
 	$precious_eflags = 1;

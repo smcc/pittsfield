@@ -401,14 +401,14 @@ int (*stubs[])() = {
     0};
 
 void install_stubs() {
-    int addr = CODE_START + 0x21;
+    int addr = CODE_START + 2*CHUNK_SIZE + 1;
     int (**p)();
     for (p = stubs; *p; p++) {
 	/* jmp is PC relative; specificially, relative to the PC after
 	   the end of the jump instruction. */
 	int offset = (int)*p - (addr + 4);
 	*((int *)addr) = offset;
-	addr += 0x10;
+	addr += CHUNK_SIZE;
     }
 }
 
