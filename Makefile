@@ -99,6 +99,7 @@ libc-no-stubs.o:	libc.c libc.h
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./loader $*.fio
 
 dist:
+	rm -rf pittsfield-$(VERSION)
 	mkdir pittsfield-$(VERSION)
 	cp -p `awk '{print $$1}' MANIFEST` pittsfield-$(VERSION)
 	tar cvzf pittsfield-$(VERSION).tar.gz pittsfield-$(VERSION)
