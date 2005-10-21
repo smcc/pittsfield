@@ -18,7 +18,7 @@ trusted stubs.
 Required software:
 GCC (tested with version 3.3.5)
 GNU binutils (tested with version 2.15)
-Pel (tested with version 5.8.4)
+Perl (tested with version 5.8.4)
 libelf (tested with version 0.8.5)
 
 There is not yet any documentation, sorry. The Makefile has examples
