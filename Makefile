@@ -79,14 +79,14 @@ libc-no-stubs.o:	libc.c libc.h
 %-noebx:	%-no-ebx.s libc-no-stubs.o outside.c
 	$(CC) $(OPT) $*-no-ebx.s libc-no-stubs.o outside.c -o $*-noebx -lm
 
-%-pad.s:	%-no-stubs-ebx.s pad.pl
-	perl pad.pl $*-no-stubs-ebx.s >$*-pad.s
+%-pad.s:	%-no-stubs-ebx.s rewrite.pl
+	perl rewrite.pl -padonly $*-no-stubs-ebx.s >$*-pad.s
 
 %-pad:	%-pad.s libc-no-stubs.o outside.c
 	$(CC) $*-pad.s libc-no-stubs.o outside.c -o $*-pad -lm
 
-%-pad-noebx.s:	%-no-ebx.s pad.pl
-	perl pad.pl $*-no-ebx.s >$*-pad-noebx.s
+%-pad-noebx.s:	%-no-ebx.s rewrite.pl
+	perl rewrite.pl -padonly $*-no-ebx.s >$*-pad-noebx.s
 
 %-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
 	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm

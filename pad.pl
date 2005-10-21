@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# **** This file is obsolete: use the -padonly option to rewrite.pl instead
+
 use strict;
 
 use x86_common;
@@ -150,7 +152,8 @@ sub nop_pad {
 	#print "\tlea\t0(%esi,1), %esi\n";
 	print "\t.byte 0x8d, 0x74, 0x26, 0\n";
     } elsif ($bytes == 5) {
-	nop_pad(3); nop_pad(2);
+	#nop_pad(3); nop_pad(2);
+	nop_pad(4); nop_pad(1);
     } elsif ($bytes == 6) {
 	print "\t.byte 0x8d, 0xb6, 0, 0, 0, 0\n";
     } elsif ($bytes == 7) {
