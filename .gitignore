@@ -34,3 +34,4 @@ sizes.h
 stub-list
 wrappers.h
 topformflat
+*.mo
