@@ -25,15 +25,21 @@ if ($is_kernel) {
     $CODE_START = sprintf '$0x%08x', $code_start;
 }
 
-my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
-my $DO_OR = $do_sandbox && ($style eq "andor");
-my $DO_TEST = $do_sandbox && ($style eq "test");
-
 my $is_main = 0;
 if (grep($_ eq "-main", @ARGV)) {
     $is_main = 1;
     @ARGV = grep($_ ne "-main", @ARGV);
 }
+
+if (grep($_ eq "-padonly", @ARGV)) {
+    $do_align = 1;
+    $do_sandbox = $do_no_rodata = 0;
+    @ARGV = grep($_ ne "-padonly", @ARGV);
+}
+
+my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
+my $DO_OR = $do_sandbox && ($style eq "andor");
+my $DO_TEST = $do_sandbox && ($style eq "test");
 
 sub insn_len {
     my($line) = @_;
@@ -332,20 +338,25 @@ sub maybe_rewrite {
 	    $call_len = 5;
 	} elsif ($args =~ /^\*($lab_complex|$reg|$any_const)$/) {
 	    my $target = $1;
-	    a_emit("movl\t$target, %ebx", 6);
-	    $real_call .= "\tandl\t$JUMP_MASK, %ebx\n"
-	      if $DO_AND;
-	    $real_call .= "\torl\t$CODE_START, %ebx\n"
-	      if $DO_OR;
-	    if ($DO_TEST) {
-		$real_call .= "\ttestl\t$JUMP_ANTI_MASK, %ebx\n";
-		$real_call .= "\tjz .LL$label_count\n";
-		$real_call .= "\tint3\n";
-		$real_call .= ".LL$label_count:\n";
-		$label_count++;
+	    if (!$do_sandbox) {
+		$real_call = $line;
+		$call_len = 4; # bogus
+	    } else {
+		a_emit("movl\t$target, %ebx", 6);
+		$real_call .= "\tandl\t$JUMP_MASK, %ebx\n"
+		  if $DO_AND;
+		$real_call .= "\torl\t$CODE_START, %ebx\n"
+		  if $DO_OR;
+		if ($DO_TEST) {
+		    $real_call .= "\ttestl\t$JUMP_ANTI_MASK, %ebx\n";
+		    $real_call .= "\tjz .LL$label_count\n";
+		    $real_call .= "\tint3\n";
+		    $real_call .= ".LL$label_count:\n";
+		    $label_count++;
+		}
+		$real_call .= "\tcall\t*%ebx\n";
+		$call_len = 2 + (6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	    }
-	    $real_call .= "\tcall\t*%ebx\n";
-	    $call_len = 2 + (6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	} else {
 	    die "Strange call $args";
 	}
@@ -419,6 +430,8 @@ sub print_stubs {
     close STUBS;
 }
 
+my $done_early = 1;
+
 if ($is_kernel) {
     print scalar <>;
     print qq/\t.section .sandboxed_text, "ax"\n/;
@@ -429,8 +442,17 @@ if ($is_kernel) {
     print "\t.p2align $log_chunk_size\n";
 } else {
     while (<>) {
-	last if /^\t?\.text/;
-	print;
+	if (/^\t?\.text/) {
+	    # OK, there's real code in this file
+	    $done_early = 0;
+	    last;
+	}
+	if ($do_no_rodata and /^\s+\.section\s+.rodata/) {
+	    print ".data\n";
+	    next;
+	} else {
+	    print;
+	}
     }
     print;
     if ($is_main) {
@@ -457,6 +479,8 @@ if ($is_kernel) {
     }
     close EXPORTS;
 }
+
+exit if $done_early;
 
 my($seen_data) = 0;
 
@@ -519,7 +543,8 @@ while (<>) {
 	align();
     }
     chomp;
-    print "$_ $comment\n";
+    #print "$_ $comment\n";
+    print "$_\n";
     if ($do_sandbox and /\t(leave|popl\s+%ebp)$/) {
 	a_emit("pushf", 1) if $precious_eflags;
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
@@ -538,5 +563,5 @@ while (<>) {
     } elsif (/^\tj$cond/) {
 	$precious_eflags = 0;
     }
-    print "# <$.>\n" if ($. % 10) == 0;
+    #print "# <$.>\n" if ($. % 10) == 0;
 }
