@@ -1,5 +1,4 @@
 #include "libc.h"
-#include "stubs.h"
 
 /* factor -- print prime factors of n.
    Copyright (C) 86, 1995-2002 Free Software Foundation, Inc.
