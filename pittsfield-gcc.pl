@@ -8,8 +8,17 @@ my $temp_dir = "/tmp";
 my $pittsfield_dir = "/afs/csail.mit.edu/u/s/smcc/sfi/pittsfield/pittsfield";
 my $rewrite = "$pittsfield_dir/rewrite.pl";
 my $rm_strops = "$pittsfield_dir/rewrite-stringops.pl";
+my $verify = "$pittsfield_dir/verify.pl";
 my $perl = "/usr/bin/perl";
 my $as = "/usr/bin/as";
+my $libc_mo = "$pittsfield_dir/libc.mo";
+my $ld = "/usr/bin/ld";
+my @ld_args = ("--section-start" => ".text=0x10000000",
+	       "--section-start" => ".data=0x20000000",
+	       "-e" => "main");
+my $fake_libc_inc = "$pittsfield_dir/fake-libc-inc";
+my $objdump = "/usr/bin/objdump";
+my $fio_dir = "/scratch/smcc/pittsfield-fios";
 
 sub check_result {
     my($prog, $result) = @_;
@@ -77,7 +86,6 @@ my $pad_only = (grep($_ eq "--pad-only", @args) > 0);
 if ($minus_c and @c_files) {
     # Compile source to object
     die "Can only compile one .c file at once" unless @c_files == 1;
-    die "Only pad-only mode is currently supported" unless $pad_only;
     my($c_file) = @c_files;
     if (!defined $out_file) {
 	$out_file = $c_file;
@@ -87,6 +95,9 @@ if ($minus_c and @c_files) {
     $basename =~ s[^.*/][];
     $basename =~ s/\..*$//;
     my $temp_file = "$temp_dir/sfigcc-$basename$$";
+    if (!$pad_only) {
+	push @args, "-nostdinc", "-I$fake_libc_inc";
+    }
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
     verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
@@ -101,10 +112,35 @@ if ($minus_c and @c_files) {
 } elsif (!$minus_c and !@c_files) {
     # Link objects to executable
     $out_file = "a.out" unless defined $out_file;
+
+    # Remove compiler-ish options
+    @args = grep(!/^-O[0123456]$/, @args);
+    @args = grep(!/^-f/, @args);
+
     if ($pad_only) {
 	verbose_command($real_compiler, "-o", $out_file, @args);
     } else {
-	die "Only pad-only mode is currently supported" unless $pad_only;
+	# Don't try linking any libraries, it won't work
+	@args = grep(!/^-l/, @args);
+
+	my $temp_file = "$temp_dir/sfigcc-$out_file$$";
+	my $dis_file = "$temp_file.dis";
+
+	my $fio_file = "$fio_dir/$out_file$$.fio";
+
+	verbose_command($ld, "-o", $fio_file, @ld_args, $libc_mo, @args);
+	verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
+	open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
+	my $okay = 0;
+	while (<CHECKS>) {
+	    if (/^Checks finished before /) {
+		$okay = $_;
+	    }
+	}
+	close CHECKS;
+	die "Verification failed" unless $okay;
+	print $okay;
+	unlink($dis_file);
     }
 } else {
     die "That compiler mode is not supported!";
