@@ -251,6 +251,14 @@ double wrap_rint(double x) {
     return rint(x);
 }
 
+long wrap_lrint(double x) {
+    return lrint(x);
+}
+
+long wrap_lrintf(float x) {
+    return lrintf(x);
+}
+
 double wrap_acos(double x) {
     return acos(x);
 }
@@ -407,13 +415,14 @@ int (*stubs[])() = {
     0};
 
 void install_stubs() {
-    int addr = CODE_START + 2*CHUNK_SIZE + 1;
+    int addr = CODE_START + 2*CHUNK_SIZE;
     int (**p)();
     for (p = stubs; *p; p++) {
 	/* jmp is PC relative; specificially, relative to the PC after
 	   the end of the jump instruction. */
-	int offset = (int)*p - (addr + 4);
-	*((int *)addr) = offset;
+	*((unsigned char *)addr) = 0xe9;
+	int offset = (int)*p - (addr + 5);
+	*((int *)(addr + 1)) = offset;
 	addr += STUB_SIZE;
     }
 }

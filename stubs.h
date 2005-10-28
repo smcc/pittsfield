@@ -34,6 +34,8 @@ char *outside_getenv(const char *name);
 int getrusage(int who, struct rusage *usage);
 int gettimeofday(struct timeval *tv, struct timezone *tz);
 double ldexp(double x, int exp);
+long int lrint(double x);
+long int lrintf(float x);
 off_t outside_lseek(int fd, off_t offset, int whence);
 double log(double x);
 int outside_open(const char *pathname, int flags, int mode);
