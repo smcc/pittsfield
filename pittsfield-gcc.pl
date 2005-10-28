@@ -7,8 +7,20 @@ use strict;
 my $temp_dir = "/tmp";
 my $pittsfield_dir = "/afs/csail.mit.edu/u/s/smcc/sfi/pittsfield/pittsfield";
 my $rewrite = "$pittsfield_dir/rewrite.pl";
+my $rm_strops = "$pittsfield_dir/rewrite-stringops.pl";
 my $perl = "/usr/bin/perl";
 my $as = "/usr/bin/as";
+
+sub check_result {
+    my($prog, $result) = @_;
+    if ($result == -1) {
+	die "$prog failed to run: $!";
+    } elsif ($result & 127) {
+	die "$prog killed by signal " . ($result & 127);
+    } elsif ($result) {
+	die "$prog failed (return value " . ($result >> 8) . ")";
+    }
+}
 
 sub verbose_command {
     my($prog, @args) = @_;
@@ -16,6 +28,7 @@ sub verbose_command {
     $msg =~ s/$pittsfield_dir/~sfi/g;
     print STDERR "$msg\n";
     system($prog, @args);
+    check_result($prog, $?);
 }
 
 # XXX rewrite to fork, open, and exec, avoiding the shell
@@ -27,6 +40,7 @@ sub verbose_redir_command {
     $msg =~ s/$pittsfield_dir/~sfi/g;
     print STDERR "$msg\n";
     system(join(" ", $prog, @args, $redir));
+    check_result($prog, $?);
 }
 
 my @args = @ARGV;
@@ -69,13 +83,21 @@ if ($minus_c and @c_files) {
 	$out_file = $c_file;
 	$out_file =~ s/\.cc?/.o/;
     }
-    my $temp_file = "$temp_dir/sfigcc$$";
+    my $basename = $c_file;
+    $basename =~ s[^.*/][];
+    $basename =~ s/\..*$//;
+    my $temp_file = "$temp_dir/sfigcc-$basename$$";
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
+    verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
+			  "$temp_file.s", ">$temp_file-nostr.s");
     verbose_redir_command($perl, "-I$pittsfield_dir", $rewrite,
-			  "-padonly", "$temp_file.s",
+			  "-padonly", "$temp_file-nostr.s",
 			  ">$temp_file.fis");
     verbose_command($as, "$temp_file.fis", "-o", $out_file);
+    unlink("$temp_file.s");
+    unlink("$temp_file-nostr.s");
+    unlink("$temp_file.fis");
 } elsif (!$minus_c and !@c_files) {
     # Link objects to executable
     $out_file = "a.out" unless defined $out_file;
