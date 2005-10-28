@@ -415,7 +415,8 @@ sub print_stubs {
 	chomp $f;
 	print ".globl $f\n";
 	print "$f:\n";
-	printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
+	#printf "\tjmp\t0x%08x\n", $code_start + ($i << $log_chunk_size);
+	print "\tnop\n" for 1 .. 5;
 	print "\tpopl\t%ebx\n";
 	print "\t.p2align $log_chunk_size\n" if $style eq "test";
 	$this_chunk = 0;
@@ -509,7 +510,7 @@ while (<>) {
 	next;
     }
     if ($dirty_esp
-	and /^\t(jmp|cmp|inc|dec|add|and|or|test|shr|s[ah]l|sahf)/) {
+	and /^\t(jmp|cmp|inc|dec|add|sub|and|or|xor|test|shr|s[ah]l|sahf)/) {
 	if ($do_sandbox) {
 	    maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	    emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
@@ -526,8 +527,8 @@ while (<>) {
     if (/^\t(test|cmp|dec)/) {
 	$precious_eflags = 0; # We kill the old ones
     }
-    if (/^\tcld$/) {
-	warn "Noticed cld at line $.: string ops not supported";
+    if (/^\trep/) {
+	warn "Noticed rep at line $.: string ops not supported";
     }
     if (/^\t[a-z]/) {
 	my $len = insn_len($_);
@@ -543,8 +544,8 @@ while (<>) {
 	align();
     }
     chomp;
-    #print "$_ $comment\n";
-    print "$_\n";
+    print "$_ $comment\n";
+    #print "$_\n";
     if ($do_sandbox and /\t(leave|popl\s+%ebp)$/) {
 	a_emit("pushf", 1) if $precious_eflags;
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);

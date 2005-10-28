@@ -18,7 +18,7 @@ our $freg = qr/%st(?:\([0-7]\))?/;
 our $arith8 = qr/(?:add|adc|and|xor|or|sbb|sub|cmp)/;
 our $arith8l = qr/${arith8}l/;
 our $ariths = qr/(?:i?mul|i?div)/;
-our $arith = qr/(?:$arith8|$ariths|test)/;
+our $arith = qr/(?:$arith8|$ariths|test|bs[fr])/;
 our $arithl = qr/${arith}l/;
 our $shift = qr/(?:rol|ror|rcl|rcr|shl|sal|shr|sar)/;
 our $dshift = qr/$shift(?:d)/;
@@ -26,15 +26,15 @@ our $unary = qr/(?:pushl?|popl?|inc(?:b|w|l|)|dec(?:b|w|l|)|not|neg)/;
 our $convert = qr/(?:cwtl|cltd)/;
 
 our $fbin = qr/(?:f(?:add|mul|divr?|subr?)(?:s|l|)p?)/;
-our $fstore = qr/(?:fi?stp?(?:s|l|ll|))/;
-our $fload = qr/(?:fi?ld(?:s|l|ll|))/;
+our $fstore = qr/(?:fi?stp?(?:s|t|l|ll|))/;
+our $fload = qr/(?:fi?(?:add|mul|subr?|divr?|comp?|ld)(?:s|t|l|ll|))/;
 our $fconst = qr/fld(?:1|l2t|l2e|pi|lg2|ln2|z)/;
-our $funary = qr/f(?:xch|abs|chs|cos|sin|sqrt|comp{0,2}(?:s|l|)|ucomp{0,2})/;
+our $funary = qr/f(?:xch|abs|chs|cos|sin|sincos|sqrt|comp{0,2}(?:s|l|)|ucomp{0,2}|scale|tst|rndint|yl2x|patan|2xm1)/;
 our $fcstore = qr/fn?st[sc]w/;
 our $fcload = qr/fldcw/;
 
 our $cond = qr/n?(?:o|b|c|ae|z|e|be|a|s|p|pe|po|l|ge|le|g)/;
-our $label = qr/\.L\d+/;
+our $label = qr/\.L(?:RWSOPS)?\d+/;
 
 our $b_sign = qr/-128|-?(?:12[0-7]|1[01]\d|\d\d|\d)/;
 our $h_sign = qr/-32768|-?(?:3276[0-7]|327[0-5]\d|32[0-6]\d\d|3[01]\d{3}|\d{1,4})/;

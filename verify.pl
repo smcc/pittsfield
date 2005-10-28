@@ -273,7 +273,7 @@ sub check_insn {
     } elsif ($args =~ /^($lword)$/) {
 	my($haddr) = $1;
 	my $addr = hex $1;
-	if ($op =~ /^($unary|$shift(?:[bwl])|i?(mul|div)l|fi?ld[sl]|$fbin|$fstore|$funary|set$cond)$/) {
+	if ($op =~ /^($unary|$shift(?:[bwl])|i?(mul|div)l|$fload|$fbin|$fstore|$funary|set$cond)$/) {
 	    die "Bad data address $haddr" unless
 	      $addr >= $data_start and $addr < $data_end;
 	    if ($op eq "pushl") {
@@ -409,7 +409,7 @@ while (<>) {
 	    ($args =~ /%esp./ || $op =~ /push|pop|call|ret/)) {
 	    printf "Use of unsafe %%esp at 0x%08x\n", $addr;
 	}
-	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf)$/) {
+	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf)$/) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);
