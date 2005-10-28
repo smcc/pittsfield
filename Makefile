@@ -49,8 +49,8 @@ libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 libc-no-stubs.o:	libc.c libc.h
 	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
 
-%.fis:	%.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl $*.s >$*.fis
+%.fis:	%.s rewrite.pl rewrite-stringops.pl x86_common.pm sizes.pm stub-list
+	perl rewrite-stringops.pl $*.s | perl rewrite.pl >$*.fis
 
 %.mo:	%.fis
 	$(AS) $*.fis -o $*.mo
