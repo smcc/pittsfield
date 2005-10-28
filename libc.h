@@ -1,3 +1,5 @@
+#ifndef PITTSFIELD_LIBC_H_INCLUDED
+#define PITTSFIELD_LIBC_H_INCLUDED
 typedef signed long ptrdiff_t;
 typedef unsigned int size_t;
 typedef int ssize_t;
@@ -52,6 +54,7 @@ struct tms {
     clock_t tms_cstime; /* system time of dead children */
 };
 
+typedef unsigned int mode_t;
 typedef long int time_t;
 
 #include "sizes.h"
@@ -203,10 +206,17 @@ REPLACEMENT void *malloc(size_t nbytes);
 REPLACEMENT_STATIC char *strcpy(char *buf, const char *src);
 REPLACEMENT char *strdup(const char *s);
 
+typedef unsigned int nlink_t;
+typedef unsigned long ino_t;
+typedef unsigned long long dev_t;
+
 struct stat {
     off_t st_size;
     int st_mode;
     time_t st_mtime;
+    nlink_t st_nlink;
+    ino_t st_ino;
+    dev_t st_dev;
 };
 
 #include "stubs.h"
@@ -485,13 +495,20 @@ struct dirent {
 REPLACEMENT int getpagesize();
 REPLACEMENT int access(const char *pathname, int mode);
 REPLACEMENT int close(int fd);
+REPLACEMENT int chmod(const char *path, mode_t mode);
+REPLACEMENT char *ctime(const time_t *timep);
 REPLACEMENT int fstat(int fd, struct stat *buf);
+REPLACEMENT int isatty(int fd);
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence);
-REPLACEMENT int open(const char *pathname, int flags, int mode);
+REPLACEMENT int open(const char *pathname, int flags, ...);
 REPLACEMENT int read(int fd, void *buf, size_t count);
 REPLACEMENT int mystat(const char *file_name, struct stat *buf);
+#ifndef NO_STUBS
+REPLACEMENT int stat(const char *file_name, struct stat *buf);
+#endif
 REPLACEMENT time_t time(time_t *t);
 REPLACEMENT clock_t times(struct tms *buf);
+REPLACEMENT int unlink(const char *path);
 
 /* directories */
 
@@ -536,6 +553,8 @@ REPLACEMENT int labs(long x);
 #define EOF (-1)
 #define BUFSIZ 4096
 
+REPLACEMENT int atol(const char *nptr);
+
 #define getchar() fgetc(stdin)
 
 REPLACEMENT FILE *fopen(const char *path, const char *mode);
@@ -545,6 +564,7 @@ REPLACEMENT int ferror(FILE *stream);
 REPLACEMENT int fflush(FILE *stream);
 REPLACEMENT int fgetc(FILE *stream);
 REPLACEMENT int getc(FILE *stream);
+REPLACEMENT char *fgets(char *buf, int size, FILE *stream);
 REPLACEMENT int fputc(int c, FILE *stream);
 REPLACEMENT int putc(int c, FILE *stream);
 REPLACEMENT int putc_unlocked(int c, FILE *stream);
@@ -559,6 +579,7 @@ REPLACEMENT int vasprintf(char **strp, const char *fmt, va_list ap);
 REPLACEMENT int asprintf(char **str, const char *fmt, ...);
 REPLACEMENT int snprintf(char *str, size_t size, const char *format, ...);
 REPLACEMENT size_t fread(void *ptr, size_t size, size_t num, FILE *stream);
+REPLACEMENT int remove(const char *path);
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -620,3 +641,4 @@ REPLACEMENT int strcasecmp(const char *s1, const char *s2);
 REPLACEMENT void *bsearch(const void *key, const void *base, size_t nmemb,
 			  size_t size,
 			  int (*compar)(const void*, const void*));
+#endif /* PITTSFIELD_LIBC_H_INCLUDED */

@@ -317,6 +317,10 @@ int wrap_outside_close(int fd) {
     return close(fd);
 }
 
+char *wrap_outside_fgets(char *buf, int size, int fi) {
+    return fgets(buf, size, files[fi]);
+}
+
 int wrap_outside_fputc(int c, int fi) {
     return fputc(c, files[fi]);
 }
@@ -353,6 +357,9 @@ struct inside_stat {
     off_t inside_st_size;
     int inside_st_mode;
     time_t inside_st_mtime;
+    nlink_t inside_st_nlink;
+    ino_t inside_st_ino;
+    dev_t inside_st_dev;
 };
 
 int wrap_outside_stat(const char *fname, struct inside_stat *in_buf) {
@@ -362,6 +369,23 @@ int wrap_outside_stat(const char *fname, struct inside_stat *in_buf) {
 	in_buf->inside_st_size = buf.st_size;
 	in_buf->inside_st_mode = buf.st_mode;
 	in_buf->inside_st_mtime = buf.st_mtime;
+	in_buf->inside_st_nlink = buf.st_nlink;
+	in_buf->inside_st_ino = buf.st_ino;
+	in_buf->inside_st_dev = buf.st_dev;
+    }
+    return ret;
+}
+
+int wrap_outside_lstat(const char *fname, struct inside_stat *in_buf) {
+    struct stat buf;
+    int ret = lstat(fname, &buf);
+    if (!ret) {
+	in_buf->inside_st_size = buf.st_size;
+	in_buf->inside_st_mode = buf.st_mode;
+	in_buf->inside_st_mtime = buf.st_mtime;
+	in_buf->inside_st_nlink = buf.st_nlink;
+	in_buf->inside_st_ino = buf.st_ino;
+	in_buf->inside_st_dev = buf.st_dev;
     }
     return ret;
 }
@@ -373,6 +397,9 @@ int wrap_outside_fstat(int fd, struct inside_stat *in_buf) {
 	in_buf->inside_st_size = buf.st_size;
 	in_buf->inside_st_mode = buf.st_mode;
 	in_buf->inside_st_mtime = buf.st_mtime;
+	in_buf->inside_st_nlink = buf.st_nlink;
+	in_buf->inside_st_ino = buf.st_ino;
+	in_buf->inside_st_dev = buf.st_dev;
     }
     return ret;
 }
@@ -396,6 +423,18 @@ clock_t wrap_clock(void) {
 
 clock_t wrap_outside_times(struct tms *buf) {
     return times(buf);
+}
+
+int wrap_outside_unlink(const char *path) {
+    return unlink(path);
+}
+
+int wrap_outside_chmod(const char *path, mode_t mode) {
+    return chmod(path, mode);
+}
+
+int wrap_outside_isatty(int fd) {
+    return isatty(fd);
 }
 
 void wrap_fail_check(void) {

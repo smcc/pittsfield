@@ -242,11 +242,27 @@ REPLACEMENT int close(int fd) {
     return ret;
 }
 
+REPLACEMENT int chmod(const char *path, mode_t mode) {
+    int ret = outside_chmod(path, mode);
+    refresh_errno();
+    return ret;
+}    
+
+REPLACEMENT char *ctime(const time_t *timep) {
+    return "Wed Jun 30 21:49:08 1993\n";
+}
+
 REPLACEMENT int fstat(int fd, struct stat *buf) {
     int ret = outside_fstat(fd, buf);
     refresh_errno();
     return ret;    
 }    
+
+REPLACEMENT int isatty(int fd) {
+    int ret = outside_isatty(fd);
+    refresh_errno();
+    return ret;
+}
 
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence) {
     int ret = outside_lseek(fd, offset, whence);
@@ -254,9 +270,13 @@ REPLACEMENT off_t lseek(int fd, off_t offset, int whence) {
     return ret;
 }
 
-REPLACEMENT int open(const char *pathname, int flags, int mode) {
-    int ret = outside_open(pathname, flags, mode);
+REPLACEMENT int open(const char *pathname, int flags, ...) {
+    va_list vl;
+    va_start(vl, flags);
+    
+    int ret = outside_open(pathname, flags, va_arg(vl, int));
     refresh_errno();
+    va_end(vl);
     return ret;    
 }
 
@@ -272,6 +292,20 @@ REPLACEMENT int mystat(const char *file_name, struct stat *buf) {
     return ret;    
 }    
 
+#ifndef NO_STUBS
+REPLACEMENT int stat(const char *file_name, struct stat *buf) {
+    int ret = outside_stat(file_name, buf);
+    refresh_errno();
+    return ret;    
+}
+#endif
+
+REPLACEMENT int lstat(const char *file_name, struct stat *buf) {
+    int ret = outside_lstat(file_name, buf);
+    refresh_errno();
+    return ret;    
+}
+
 REPLACEMENT time_t time(time_t *t) {
     struct timeval tv;
     gettimeofday(&tv, 0);
@@ -284,6 +318,12 @@ REPLACEMENT clock_t times(struct tms *buf) {
     clock_t ret = outside_times(buf);
     refresh_errno();
     return ret;    
+}	
+
+REPLACEMENT int unlink(const char *path) {
+    int ret = outside_unlink(path);
+    refresh_errno();
+    return ret;
 }	
 
 /* directories */
@@ -387,6 +427,10 @@ REPLACEMENT int labs(long x) {
 
 /* stdio */
 
+REPLACEMENT int atol(const char *nptr) {
+    return atoi(nptr);
+}
+
 REPLACEMENT FILE *fopen(const char *path, const char *mode) {
     int fi = outside_fopen(path, mode);
     if (fi == -1) {
@@ -432,6 +476,14 @@ REPLACEMENT int fgetc(FILE *stream) {
 
 REPLACEMENT int getc(FILE *stream) {
     return fgetc(stream);
+}
+
+REPLACEMENT char *fgets(char *buf, int size, FILE *stream) {
+    char *ret = outside_fgets(buf, size, *stream);
+    if (!ret) {
+	refresh_errno();
+    }
+    return ret;
 }
 
 REPLACEMENT int fputc(int c, FILE *stream) {
@@ -551,6 +603,10 @@ REPLACEMENT size_t fwrite_unlocked(const void *ptr, size_t size, size_t num,
 
 REPLACEMENT void rewind(FILE *stream) {
     outside_rewind(*stream);
+}
+
+REPLACEMENT int remove(const char *path) {
+    return unlink(path);
 }
 
 REPLACEMENT int ungetc(int c, FILE *stream) {
