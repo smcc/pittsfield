@@ -39,26 +39,29 @@ int outside_edi;
 jmp_buf exit_buf;
 int exit_value;
 
-int call_in(void *addr) {
+int call_in(void *addr, int argc, char **argv) {
     int ret;
     if (!setjmp(exit_buf)) {
-	asm("movl %0, %%eax" :: "r" (addr));
-	asm("movl %esp, outside_esp");
-	asm("movl %ebp, outside_ebp");
-	asm("movl %ebx, outside_ebx");
-	asm("movl %esi, outside_esi");
-	asm("movl %edi, outside_edi");
-	asm("movl inside_esp, %esp");
-	asm("movl inside_ebp, %ebp");
-	asm("call *%eax");
-	asm("movl %esp, inside_esp");
-	asm("movl %ebp, inside_ebp");
-	asm("movl outside_esp, %esp");
-	asm("movl outside_ebp, %ebp");
-	asm("movl outside_ebx, %ebx");
-	asm("movl outside_esi, %esi");
-	asm("movl outside_edi, %edi");
-	asm("movl %%eax, %0" : "=r" (ret));
+	/* XXX This is brittle wrt. GCC's code generation strategy. */
+	asm("movl  %0, %%ecx" :: "r" (argc));
+	asm("movl  %0, %%edx" :: "r" (argv));
+	asm("movl  %0, %%eax" :: "r" (addr));
+	asm("movl  %esp, outside_esp");
+	asm("movl  %ebp, outside_ebp");
+	asm("movl  %ebx, outside_ebx");
+	asm("movl  %esi, outside_esi");
+	asm("movl  %edi, outside_edi");
+	asm("movl  inside_esp, %esp");
+	asm("movl  inside_ebp, %ebp");
+	asm("call  *%eax");
+	asm("movl  %esp, inside_esp");
+	asm("movl  %ebp, inside_ebp");
+	asm("movl  outside_esp, %esp");
+	asm("movl  outside_ebp, %ebp");
+	asm("movl  outside_ebx, %ebx");
+	asm("movl  outside_esi, %esi");
+	asm("movl  outside_edi, %edi");
+	asm("movl  %%eax, %0" : "=r" (ret));
 	return ret;
     }
     return exit_value;
@@ -113,10 +116,11 @@ void *wrap_sbrk(long incr) {
     if ((unsigned)new_brk > (unsigned)DATA_START &&
 	(unsigned)new_brk < (unsigned)DATA_END) {
 	void *old_brk = data_break;
-	/*printf("Moving break by %lx to %p\n", incr, new_brk);*/
+	/* printf("Moving break by 0x%lx to %p\n", incr, new_brk); */
 	data_break = new_brk;
 	return old_brk;
     } else {
+	/* printf("Rejecting sbrk by 0x%lx to %p\n", incr, new_brk); */
 	return (void *)-1;
     }
 }
@@ -481,6 +485,7 @@ int main(int argc, char **argv) {
     int ret;
     void *retp;
     unsigned version;
+    const char *fio_name;
 
     /* Do this early, before libc tries to use the space */
     retp = mmap((void *)DATA_START, DATA_SIZE, PROT_READ | PROT_WRITE,
@@ -489,10 +494,22 @@ int main(int argc, char **argv) {
 	perror("data mmap:");
     }
 
+#ifndef LOADER_FIO
     printf("Loader running with main at %p, malloc arena around %p\n",
 	   (void *)main, malloc(1));
-    
-    fd = open(argv[1], O_RDONLY);
+#endif    
+
+#ifdef LOADER_FIO
+    fio_name = LOADER_FIO;
+#else
+    fio_name = argv[1];
+    argc--;
+    argv++;
+#endif
+    fd = open(fio_name, O_RDONLY);
+    if (fd == -1) {
+	perror("Load fio");
+    }
     version = elf_version(EV_CURRENT);
     assert(version != EV_NONE);
     elf = elf_begin(fd, ELF_C_READ, 0);
@@ -582,7 +599,9 @@ int main(int argc, char **argv) {
     install_stubs();
     data_break = (void *)(DATA_START + data_size);
     inside_ebp = inside_esp = (unsigned)DATA_END - 4;
-    ret = call_in((void*)CODE_START);
-    printf("%d\n", ret);
+    ret = call_in((void*)CODE_START, argc, argv);
+#ifndef LOADER_FIO
+    printf("Module returned %d\n", ret);
+#endif
     return ret;
 }

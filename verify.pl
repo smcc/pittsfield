@@ -413,13 +413,14 @@ while (<>) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);
-	if ($flags & (IJUMP|IWRITE) and $addr != $code_start + 0x10) {
+	if ($flags & (IJUMP|IWRITE) and $addr != $code_start + 0x13) {
 	    printf "Unsafe %s %s at 0x%08x ($safety)\n", $op, $args, $addr;
 	}
 	if ($flags & JUMP and $unsafety & CHANGE_EBP) {
 	    printf "Unsafe %%ebp escapes by jump at 0x%08x\n", $addr;
 	}
-	if ($flags & JUMP and $unsafety & (CHANGE_ESP|BUMP_ESP)) {
+	if ($flags & JUMP and $unsafety & (CHANGE_ESP|BUMP_ESP)
+	    and $addr != $code_start + 0x13) {
 	    printf "Unsafe %%esp escapes by jump at 0x%08x\n", $addr;
 	}
 	$safety = $flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE|

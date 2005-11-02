@@ -35,6 +35,10 @@ if (grep($_ eq "-padonly", @ARGV)) {
     $do_align = 1;
     $do_sandbox = $do_no_rodata = 0;
     @ARGV = grep($_ ne "-padonly", @ARGV);
+} elsif (grep($_ eq "-no-ro-only", @ARGV)) {
+    $do_align = $do_no_rodata = 1;
+    $do_sandbox = 0;
+    @ARGV = grep($_ ne "-no-ro-only", @ARGV);
 }
 
 my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
@@ -281,7 +285,7 @@ sub maybe_rewrite {
 	emit("popf", 1) if $precious_eflags and !$DO_TEST;
 	return 1;
     } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
-	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore/) {
+	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore|$fcstore/) {
 	my $target = $args;
 	return 0 if $op =~ /^lea[blw]$/;
 	if ($target =~ /^(-?\d+)\((%e[bs]p)\)$/) {
@@ -457,8 +461,11 @@ if ($is_kernel) {
     }
     print;
     if ($is_main) {
-	nop_pad($chunk_size - 5);
+	nop_pad($chunk_size - 7);
+	print "\tpushl %edx\n"; # argv - 1 byte
+	print "\tpushl %ecx\n"; # argc - 1 byte
 	print "\tcall main\n"; # 5 bytes
+	print "\taddl \$8,%esp\n"; # pop argc and argv
 	print "\tret\n";
 	print "\t.p2align $log_chunk_size\n";
     }
