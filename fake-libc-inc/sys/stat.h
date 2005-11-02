@@ -1,0 +1,12 @@
+struct stat {
+    off_t st_size;
+    int st_mode;
+    time_t st_mtime;
+    nlink_t st_nlink;
+    ino_t st_ino;
+    dev_t st_dev;
+};
+
+REPLACEMENT int fstat(int fd, struct stat *buf);
+REPLACEMENT int stat(const char *file_name, struct stat *buf);
+REPLACEMENT int lstat(const char *file_name, struct stat *buf);
