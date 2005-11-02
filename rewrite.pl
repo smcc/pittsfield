@@ -553,7 +553,8 @@ while (<>) {
     chomp;
     print "$_ $comment\n";
     #print "$_\n";
-    if ($do_sandbox and /\t(leave|popl\s+%ebp)$/) {
+    if ($do_sandbox and /\t(leave|popl\s+%ebp)$/
+	|| (/, %ebp/ and !/\tmovl\t%esp, %ebp$/)) {
 	a_emit("pushf", 1) if $precious_eflags;
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	emit("andl\t$DATA_MASK, %ebp", 6) if $DO_AND;
