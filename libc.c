@@ -1,10 +1,11 @@
+#define NEED_STAT
 #include "libc.h"
 #include "sizes.h"
 
-FILE files[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-FILE *stdin = &files[0];
-FILE *stdout = &files[1];
-FILE *stderr = &files[2];
+FILE myfiles[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+FILE *stdin = &myfiles[0];
+FILE *stdout = &myfiles[1];
+FILE *stderr = &myfiles[2];
 
 #ifdef DEFINE_INLINES
 REPLACEMENT void *memchr(const void *s, int c, size_t n) {
@@ -46,7 +47,7 @@ REPLACEMENT void *memmove(void *dest, const void *src, unsigned int n) {
 	    d[i] = s[i];
 	}
     } else {
-	for (i = n-1; i >= 0; i--) {
+	for (i = n-1; i != (unsigned)-1; i--) {
 	    d[i] = s[i];
 	}
     }
@@ -230,6 +231,16 @@ REPLACEMENT int getpagesize() {
     return 8192;
 }
 
+REPLACEMENT char *getcwd(char *buf, size_t size) {
+    if (size >= 4) {
+	strcpy(buf, "/tmp");
+	return buf;
+    } else {
+	errno = ERANGE;
+	return 0;
+    }
+}
+
 REPLACEMENT int access(const char *pathname, int mode) {
     int ret = outside_access(pathname, mode);
     refresh_errno();
@@ -252,6 +263,11 @@ REPLACEMENT char *ctime(const time_t *timep) {
     return "Wed Jun 30 21:49:08 1993\n";
 }
 
+REPLACEMENT uid_t getuid(void)  { return 15168; }
+REPLACEMENT uid_t geteuid(void) { return 15168; }
+REPLACEMENT gid_t getgid(void)  { return 15168; }
+REPLACEMENT gid_t getegid(void) { return 15168; }
+
 REPLACEMENT int fstat(int fd, struct stat *buf) {
     int ret = outside_fstat(fd, buf);
     refresh_errno();
@@ -270,6 +286,20 @@ REPLACEMENT off_t lseek(int fd, off_t offset, int whence) {
     return ret;
 }
 
+REPLACEMENT struct tm *localtime(const time_t *timep) {
+    static struct tm t;
+    t.tm_sec = 8;
+    t.tm_min = 49;
+    t.tm_hour = 21;
+    t.tm_mday = 30;
+    t.tm_mon = 5;
+    t.tm_year = 93;
+    t.tm_wday = 3;
+    t.tm_yday = 180;
+    t.tm_isdst = 1;
+    return &t;
+}
+
 REPLACEMENT int open(const char *pathname, int flags, ...) {
     va_list vl;
     va_start(vl, flags);
@@ -286,6 +316,14 @@ REPLACEMENT int read(int fd, void *buf, size_t count) {
     return ret;    
 }
 
+/* 186.crafty uses this, believe it or not. */
+REPLACEMENT int select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
+		       struct timeval *tv) {
+    int ret = outside_select(n, rfds, wfds, xfds, tv);
+    refresh_errno();
+    return ret;
+}
+
 REPLACEMENT int mystat(const char *file_name, struct stat *buf) {
     int ret = outside_stat(file_name, buf);
     refresh_errno();
@@ -299,6 +337,17 @@ REPLACEMENT int stat(const char *file_name, struct stat *buf) {
     return ret;    
 }
 #endif
+
+/* We don't actually deliver any signals */
+REPLACEMENT sighandler_t signal(int signum, sighandler_t handler) {
+    return 0;
+}
+
+/* Not implemented, for obvious reasons. But SPECint's gcc tries to
+   call it. */
+REPLACEMENT int system(const char *string) {
+    return -1;
+}
 
 REPLACEMENT int lstat(const char *file_name, struct stat *buf) {
     int ret = outside_lstat(file_name, buf);
@@ -325,6 +374,10 @@ REPLACEMENT int unlink(const char *path) {
     refresh_errno();
     return ret;
 }	
+
+REPLACEMENT int utime(const char *filename, const struct utimbuf *buf) {
+    return 0;
+}
 
 /* directories */
 
@@ -437,7 +490,7 @@ REPLACEMENT FILE *fopen(const char *path, const char *mode) {
 	refresh_errno();
 	return 0;
     }
-    return &files[fi];
+    return &myfiles[fi];
 }
 
 REPLACEMENT FILE *fdopen(int fd, const char *mode) {
@@ -446,7 +499,7 @@ REPLACEMENT FILE *fdopen(int fd, const char *mode) {
 	refresh_errno();
 	return 0;
     }
-    return &files[fi];
+    return &myfiles[fi];
 }
 
 REPLACEMENT int fclose(FILE *stream) {
@@ -484,6 +537,17 @@ REPLACEMENT char *fgets(char *buf, int size, FILE *stream) {
 	refresh_errno();
     }
     return ret;
+}
+
+REPLACEMENT char *gets(char *buf) {
+    for (;;) {
+	int c = getchar();
+	if (c == EOF || c == '\n') {
+	    *buf = '\0';
+	    return buf;
+	}
+	*buf++ = c;
+    }
 }
 
 REPLACEMENT int fputc(int c, FILE *stream) {
@@ -530,6 +594,10 @@ REPLACEMENT int fileno(FILE *stream) {
     return ret;
 }
 
+REPLACEMENT int feof(FILE *stream) {
+    return outside_feof(*stream);
+}
+
 REPLACEMENT int fprintf(FILE *stream, const char *format, ...) {
     va_list args;
     int ret;
@@ -567,6 +635,24 @@ REPLACEMENT int snprintf(char *str, size_t size, const char *format, ...) {
     int ret;
     va_start(args, format);
     ret = outside_vsnprintf(str, size, format, args);
+    va_end(args);
+    return ret;
+}
+
+REPLACEMENT int fscanf(FILE *stream, const char *fmt, ...) {
+    va_list args;
+    int ret;
+    va_start(args, fmt);
+    ret = outside_vfscanf(*stream, fmt, args);
+    va_end(args);
+    return ret;
+}
+
+REPLACEMENT int scanf(const char *fmt, ...) {
+    va_list args;
+    int ret;
+    va_start(args, fmt);
+    ret = outside_vfscanf(0, fmt, args);
     va_end(args);
     return ret;
 }
@@ -620,6 +706,10 @@ REPLACEMENT int ungetc(int c, FILE *stream) {
 REPLACEMENT const char *gettext(const char *msgid) {
     return msgid;
 }
+
+static char *empty_environment[1] = {0};
+char **environ = empty_environment;
+
 
 #ifndef REAL_MALLOC
 
@@ -975,6 +1065,28 @@ REPLACEMENT size_t strspn(const char *s, const char *set) {
       s++;
   }
   return len;
+}
+
+static char* strtok_r(char *s, const char *delim, char **ptrptr) {
+  char *tmp = 0;
+
+  if (!s)
+    s = *ptrptr;
+  s += strspn(s, delim);           /* overread leading delimiter */
+  if (*s) {
+    tmp = s;
+    s += strcspn(s, delim);
+    if (*s) *s++ = 0;   /* not the end ? => terminate it */
+  }
+  *ptrptr = s;
+  return tmp;
+}
+
+static char *strtok_pos;
+
+REPLACEMENT char *strtok(char *s, const char *delim)
+{
+  return strtok_r(s, delim, &strtok_pos);
 }
 
 REPLACEMENT size_t strcspn(const char *s, const char *reject) {

@@ -18,6 +18,9 @@ typedef long long int64_t;
 
 typedef struct __dirstream DIR;
 
+typedef unsigned int uid_t;
+typedef unsigned int gid_t;
+
 struct timeval {
     long tv_sec;
     long tv_usec;
@@ -57,6 +60,15 @@ struct tms {
 typedef unsigned int mode_t;
 typedef long int time_t;
 
+struct utimbuf {
+    time_t actime;
+    time_t modtime;
+};
+
+typedef struct {
+    long fds_bits[32];
+} fd_set;
+
 #include "sizes.h"
 
 #ifdef NO_STUBS
@@ -80,7 +92,6 @@ typedef long int time_t;
 
 #ifdef NO_STUBS
 #define FILE myFILE
-#define files myfiles
 #define stdin mystdin
 #define stdout mystdout
 #define stderr mystderr
@@ -196,7 +207,7 @@ typedef long int time_t;
 #define struct_stat struct stat
 #endif
 typedef int FILE;
-extern FILE files[16];
+extern FILE myfiles[16];
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
@@ -210,6 +221,7 @@ typedef unsigned int nlink_t;
 typedef unsigned long ino_t;
 typedef unsigned long long dev_t;
 
+#ifdef NEED_STAT
 struct stat {
     off_t st_size;
     int st_mode;
@@ -217,7 +229,10 @@ struct stat {
     nlink_t st_nlink;
     ino_t st_ino;
     dev_t st_dev;
+    uid_t st_uid;
+    gid_t st_gid;
 };
+#endif
 
 #include "stubs.h"
 
@@ -262,7 +277,7 @@ REPLACEMENT_STATIC inline void *memmove(void *dest, const void *src, unsigned in
 	    d[i] = s[i];
 	}
     } else {
-	for (i = n-1; i >= 0; i--) {
+	for (i = n-1; i != (unsigned)-1; i--) {
 	    d[i] = s[i];
 	}
     }
@@ -484,6 +499,43 @@ extern int sys_nerr;
 #define S_IWRITE      0200    /* Write by owner.  */
 #define S_IEXEC       0100    /* Execute by owner.  */
 
+
+/* Signals, from Linux  */
+#define SIGHUP          1       /* Hangup (POSIX).  */
+#define SIGINT          2       /* Interrupt (ANSI).  */
+#define SIGQUIT         3       /* Quit (POSIX).  */
+#define SIGILL          4       /* Illegal instruction (ANSI).  */
+#define SIGTRAP         5       /* Trace trap (POSIX).  */
+#define SIGABRT         6       /* Abort (ANSI).  */
+#define SIGIOT          6       /* IOT trap (4.2 BSD).  */
+#define SIGBUS          7       /* BUS error (4.2 BSD).  */
+#define SIGFPE          8       /* Floating-point exception (ANSI).  */
+#define SIGKILL         9       /* Kill, unblockable (POSIX).  */
+#define SIGUSR1         10      /* User-defined signal 1 (POSIX).  */
+#define SIGSEGV         11      /* Segmentation violation (ANSI).  */
+#define SIGUSR2         12      /* User-defined signal 2 (POSIX).  */
+#define SIGPIPE         13      /* Broken pipe (POSIX).  */
+#define SIGALRM         14      /* Alarm clock (POSIX).  */
+#define SIGTERM         15      /* Termination (ANSI).  */
+#define SIGSTKFLT       16      /* Stack fault.  */
+#define SIGCLD          SIGCHLD /* Same as SIGCHLD (System V).  */
+#define SIGCHLD         17      /* Child status has changed (POSIX).  */
+#define SIGCONT         18      /* Continue (POSIX).  */
+#define SIGSTOP         19      /* Stop, unblockable (POSIX).  */
+#define SIGTSTP         20      /* Keyboard stop (POSIX).  */
+#define SIGTTIN         21      /* Background read from tty (POSIX).  */
+#define SIGTTOU         22      /* Background write to tty (POSIX).  */
+#define SIGURG          23      /* Urgent condition on socket (4.2 BSD).  */
+#define SIGXCPU         24      /* CPU limit exceeded (4.2 BSD).  */
+#define SIGXFSZ         25      /* File size limit exceeded (4.2 BSD).  */
+#define SIGVTALRM       26      /* Virtual alarm clock (4.2 BSD).  */
+#define SIGPROF         27      /* Profiling alarm clock (4.2 BSD).  */
+#define SIGWINCH        28      /* Window size change (4.3 BSD, Sun).  */
+#define SIGPOLL         SIGIO   /* Pollable event occurred (System V).  */
+#define SIGIO           29      /* I/O now possible (4.2 BSD).  */
+#define SIGPWR          30      /* Power failure restart (System V).  */
+#define SIGSYS          31      /* Bad system call.  */
+
 struct dirent {
     int d_ino;
     off_t d_off;
@@ -492,23 +544,60 @@ struct dirent {
     char d_name[256]; 
 };
 
+typedef void (*sighandler_t)(int);
+#define SIG_ERR ((sighandler_t)-1)
+#define SIG_DFL ((sighandler_t)0)
+#define SIG_IGN ((sighandler_t)1)
+
+#define FD_ZERO(set)      memset((set), 0, sizeof(fd_set))
+#define FD_SET(d, set)   ((set)->fds_bits[(d)/32] |=  (1 << ((d) % 32)))
+#define FD_CLR(d, set)   ((set)->fds_bits[(d)/32] &= ~(1 << ((d) % 32)))
+#define FD_ISSET(d, set) ((set)->fds_bits[(d)/32] &   (1 << ((d) % 32)))
+
+struct tm {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
+};
+
 REPLACEMENT int getpagesize();
+REPLACEMENT char *getcwd(char *buf, size_t size);
 REPLACEMENT int access(const char *pathname, int mode);
 REPLACEMENT int close(int fd);
 REPLACEMENT int chmod(const char *path, mode_t mode);
 REPLACEMENT char *ctime(const time_t *timep);
+#ifdef NEED_STAT
 REPLACEMENT int fstat(int fd, struct stat *buf);
+#endif
+REPLACEMENT uid_t getuid(void);
+REPLACEMENT uid_t geteuid(void);
+REPLACEMENT gid_t getgid(void);
+REPLACEMENT gid_t getegid(void);
 REPLACEMENT int isatty(int fd);
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence);
+REPLACEMENT struct tm *localtime(const time_t *timep);
 REPLACEMENT int open(const char *pathname, int flags, ...);
 REPLACEMENT int read(int fd, void *buf, size_t count);
+REPLACEMENT int select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
+		       struct timeval *tv);
+#ifdef NEED_STAT
 REPLACEMENT int mystat(const char *file_name, struct stat *buf);
 #ifndef NO_STUBS
 REPLACEMENT int stat(const char *file_name, struct stat *buf);
 #endif
+#endif
+REPLACEMENT sighandler_t signal(int signum, sighandler_t handler);
+REPLACEMENT int system(const char *string);
 REPLACEMENT time_t time(time_t *t);
 REPLACEMENT clock_t times(struct tms *buf);
 REPLACEMENT int unlink(const char *path);
+REPLACEMENT int utime(const char *filename, const struct utimbuf *buf);
 
 /* directories */
 
@@ -565,6 +654,7 @@ REPLACEMENT int fflush(FILE *stream);
 REPLACEMENT int fgetc(FILE *stream);
 REPLACEMENT int getc(FILE *stream);
 REPLACEMENT char *fgets(char *buf, int size, FILE *stream);
+REPLACEMENT char *gets(char *buf);
 REPLACEMENT int fputc(int c, FILE *stream);
 REPLACEMENT int putc(int c, FILE *stream);
 REPLACEMENT int putc_unlocked(int c, FILE *stream);
@@ -573,11 +663,14 @@ REPLACEMENT int fputs(const char *s, FILE *stream);
 REPLACEMENT int fputs_unlocked(const char *s, FILE *stream);
 REPLACEMENT int puts(const char *s);
 REPLACEMENT int fileno(FILE *stream);
+REPLACEMENT int feof(FILE *stream);
 REPLACEMENT int fprintf(FILE *stream, const char *format, ...);
 REPLACEMENT int vfprintf(FILE *stream, const char *format, va_list ap);
 REPLACEMENT int vasprintf(char **strp, const char *fmt, va_list ap);
 REPLACEMENT int asprintf(char **str, const char *fmt, ...);
 REPLACEMENT int snprintf(char *str, size_t size, const char *format, ...);
+REPLACEMENT int fscanf(FILE *stream, const char *fmt, ...);
+REPLACEMENT int scanf(const char *fmt, ...);
 REPLACEMENT size_t fread(void *ptr, size_t size, size_t num, FILE *stream);
 REPLACEMENT int remove(const char *path);
 
@@ -596,6 +689,18 @@ REPLACEMENT int ungetc(int c, FILE *stream);
 
 /* internationalization */
 REPLACEMENT const char *gettext(const char *msgid);
+
+/* I couldn't find any documentation for __builtin_setjmp; this layout for
+   jmp_buf was determined empirically. */
+typedef struct {
+    int frame_ptr;
+    int return_addr;
+    int stack_ptr;
+} jmp_buf[1];
+#define setjmp __builtin_setjmp
+#define longjmp __builtin_longjmp
+
+extern char **environ;
 
 #ifndef REAL_MALLOC
 
@@ -631,6 +736,8 @@ REPLACEMENT void qsort(void *base, size_t nmemb, size_t size,
 REPLACEMENT size_t strspn(const char *s, const char *set);
 
 REPLACEMENT size_t strcspn(const char *s, const char *reject);
+
+REPLACEMENT char *strtok(char *s, const char *delim);
 
 REPLACEMENT char *strpbrk(const char *s, const char *accept);
 REPLACEMENT unsigned long int strtoul(const char *ptr, char **endptr,

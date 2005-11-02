@@ -185,12 +185,20 @@ int wrap_outside_fileno(int fi) {
     return fileno(files[fi]);
 }
 
+int wrap_outside_feof(int fi) {
+    return feof(files[fi]);
+}
+
 int wrap_outside_fgetc(int fi) {
     return fgetc(files[fi]);
 }
 
 int wrap_outside_vfprintf(int fi, const char *fmt, va_list ap) {
     return vfprintf(files[fi], fmt, ap);
+}
+
+int wrap_outside_vfscanf(int fi, const char *fmt, va_list ap) {
+    return vfscanf(files[fi], fmt, ap);
 }
 
 size_t wrap_outside_fread(void *ptr, size_t size, size_t num, int fi) {
@@ -216,7 +224,7 @@ int wrap_gettimeofday(struct timeval *tv, struct timezone *tz) {
 int wrap_sscanf(const char *str, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    return sscanf(str, fmt, ap);
+    return vsscanf(str, fmt, ap);
 }
 
 double wrap_atof(const char *nptr) {
@@ -285,6 +293,10 @@ double wrap_fabs(double x) {
 
 double wrap_log(double x) {
     return log(x);
+}
+
+double wrap_log10(double x) {
+    return log10(x);
 }
 
 double wrap_ceil(double x) {
@@ -364,6 +376,9 @@ struct inside_stat {
     nlink_t inside_st_nlink;
     ino_t inside_st_ino;
     dev_t inside_st_dev;
+    uid_t inside_st_uid;
+    gid_t inside_st_gid
+
 };
 
 int wrap_outside_stat(const char *fname, struct inside_stat *in_buf) {
@@ -376,6 +391,8 @@ int wrap_outside_stat(const char *fname, struct inside_stat *in_buf) {
 	in_buf->inside_st_nlink = buf.st_nlink;
 	in_buf->inside_st_ino = buf.st_ino;
 	in_buf->inside_st_dev = buf.st_dev;
+	in_buf->inside_st_uid = buf.st_uid;
+	in_buf->inside_st_gid = buf.st_gid;
     }
     return ret;
 }
@@ -390,6 +407,8 @@ int wrap_outside_lstat(const char *fname, struct inside_stat *in_buf) {
 	in_buf->inside_st_nlink = buf.st_nlink;
 	in_buf->inside_st_ino = buf.st_ino;
 	in_buf->inside_st_dev = buf.st_dev;
+	in_buf->inside_st_uid = buf.st_uid;
+	in_buf->inside_st_gid = buf.st_gid;
     }
     return ret;
 }
@@ -404,6 +423,8 @@ int wrap_outside_fstat(int fd, struct inside_stat *in_buf) {
 	in_buf->inside_st_nlink = buf.st_nlink;
 	in_buf->inside_st_ino = buf.st_ino;
 	in_buf->inside_st_dev = buf.st_dev;
+	in_buf->inside_st_uid = buf.st_uid;
+	in_buf->inside_st_gid = buf.st_gid;
     }
     return ret;
 }
@@ -439,6 +460,11 @@ int wrap_outside_chmod(const char *path, mode_t mode) {
 
 int wrap_outside_isatty(int fd) {
     return isatty(fd);
+}
+
+int wrap_outside_select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
+			struct timeval *tv) {
+    return select(n, rfds, wfds, xfds, tv);
 }
 
 void wrap_fail_check(void) {

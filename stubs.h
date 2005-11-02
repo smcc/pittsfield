@@ -16,6 +16,7 @@ double exp(double x);
 double fabs(double x);
 int outside_fclose(int fi);
 int outside_fdopen(int fd, const char *mode);
+int outside_feof(int fi);
 int outside_ferror(int fi);
 int outside_fflush(int fi);
 int outside_fileno(int fi);
@@ -29,7 +30,9 @@ size_t outside_fread(void *ptr, size_t size, size_t num, int fi);
 void outside_free(void *ptr);
 double frexp(double x, int *exp);
 int outside_fseek(int fi, long offset, int whence);
+#ifdef NEED_STAT
 int outside_fstat(int fd, struct stat *buf);
+#endif
 long outside_ftell(int fi);
 size_t outside_fwrite(const void *ptr, size_t size, size_t num, int fi);
 char *outside_getenv(const char *name);
@@ -40,8 +43,11 @@ double ldexp(double x, int exp);
 long int lrint(double x);
 long int lrintf(float x);
 off_t outside_lseek(int fd, off_t offset, int whence);
+#ifdef NEED_STAT
 int outside_lstat(const char *fname, struct stat *buf);
+#endif
 double log(double x);
+double log10(double x);
 int outside_open(const char *pathname, int flags, int mode);
 DIR *outside_opendir(const char *name);
 double pow(double x, double y);
@@ -53,17 +59,21 @@ struct dirent *outside_readdir(DIR *dir);
 void outside_rewind(int fi);
 double rint(double x);
 void *sbrk(long inc);
+int outside_select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, struct timeval *tv);
 double sin(double x);
 int sprintf(char *str, const char *format, ...);
 double sqrt(double x);
 int sscanf(const char *str, const char *format, ...);
+#ifdef NEED_STAT
 int outside_stat(const char *fname, struct stat *buf);
+#endif
 char *outside_strerror(int errnum);
 clock_t outside_times(struct tms *buf);
 int outside_ungetc(int c, int fi);
 int outside_unlink(const char *path);
 int outside_vasprintf(char **strp, const char *fmt, va_list ap);
 int outside_vfprintf(int fi, const char *fmt, va_list ap);
+int outside_vfscanf(int fi, const char *fmt, va_list ap);
 int outside_vsnprintf(char *str, size_t size, const char *format, va_list ap);
 
 void fail_check(void);
