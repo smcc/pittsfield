@@ -9,21 +9,23 @@ our @EXPORT = qw($code_start $data_start $code_size $code_size
 		 $style $is_kernel
 		 $data_mask $jump_mask $log_chunk_size $chunk_size);
 
-# Classic
-my $log_code_size = 24;
-my $code_tag = 0x10;
-my $log_data_size = 24;
-my $data_tag = 0x20;
-our $is_kernel = 0;
+# Classic (code and data 16MB each)
+# my $log_code_size = 24;
+# my $code_tag = 0x10;
+# my $log_data_size = 24;
+# my $data_tag = 0x20;
+# our $is_kernel = 0;
 
-# Biggest data safe with standard code location
+# Biggest data (128MB) safe with standard code location
 # my $log_code_size = 24;
 # my $code_tag = 0x10;
 # my $log_data_size = 27;
 # my $data_tag = 0x4;
 # our $is_kernel = 0;
 
-# Biggest data compatible with usual libc location
+# Biggest data (512MB) compatible with usual libc location
+# Note this is not actually safe, since the code is in the data's zero
+# tag region
 # my $log_code_size = 24;
 # my $code_tag = 0x10;
 # my $log_data_size = 29;
@@ -31,11 +33,11 @@ our $is_kernel = 0;
 # our $is_kernel = 0;
 
 # 1GB data, assumes loader moved to 0xa0000000 or so
-# my $log_code_size = 24;
-# my $code_tag = 0x90;
-# my $log_data_size = 30;
-# my $data_tag = 0x1;
-# our $is_kernel = 0;
+my $log_code_size = 24;
+my $code_tag = 0x90;
+my $log_data_size = 30;
+my $data_tag = 0x1;
+our $is_kernel = 0;
 
 # Kernel, 1 page each
 # my $log_code_size = 12;

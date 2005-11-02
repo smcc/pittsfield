@@ -1,5 +1,5 @@
-#SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000 -e main
-SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000 -e main
+SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000 -e main
+#SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000 -e main
 
 VERSION:=0.2
 
@@ -13,8 +13,8 @@ TFF:=./topformflat
 .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
 loader:	loader.c wrappers.h sizes.h high-link.x
-	@#$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
-	$(CC) -Wall -g loader.c -lelf -lm -o loader
+	$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
+	@#$(CC) -Wall -g loader.c -lelf -lm -o loader
 
 wrappers.h: gen-stubs
 stub-list: gen-stubs
