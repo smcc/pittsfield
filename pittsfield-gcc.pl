@@ -13,12 +13,16 @@ my $perl = "/usr/bin/perl";
 my $as = "/usr/bin/as";
 my $libc_mo = "$pittsfield_dir/libc.mo";
 my $ld = "/usr/bin/ld";
-my @ld_args = ("--section-start" => ".text=0x10000000",
-	       "--section-start" => ".data=0x20000000",
+my @ld_args = ("--section-start" => ".text=0x90000000",
+	       "--section-start" => ".data=0x40000000",
 	       "-e" => "main");
 my $fake_libc_inc = "$pittsfield_dir/fake-libc-inc";
 my $objdump = "/usr/bin/objdump";
 my $fio_dir = "/scratch/smcc/pittsfield-fios";
+my $loader_c = "$pittsfield_dir/loader.c";
+my $highlink_x = "$pittsfield_dir/high-link.x";
+my @loader_flags = ("-static", "-lelf", "-lm",
+		    "-Wl,-T" => "-Wl,$highlink_x");
 
 sub check_result {
     my($prog, $result) = @_;
@@ -96,15 +100,15 @@ if ($minus_c and @c_files) {
     $basename =~ s/\..*$//;
     my $temp_file = "$temp_dir/sfigcc-$basename$$";
     if (!$pad_only) {
-	push @args, "-nostdinc", "-I$fake_libc_inc";
+	push @args, "-nostdinc", "-I$fake_libc_inc", "--fixed-ebx";
     }
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
     verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
 			  "$temp_file.s", ">$temp_file-nostr.s");
     verbose_redir_command($perl, "-I$pittsfield_dir", $rewrite,
-			  "-padonly", "$temp_file-nostr.s",
-			  ">$temp_file.fis");
+			  ($pad_only ? "-padonly" : ()),
+			  "$temp_file-nostr.s", ">$temp_file.fis");
     verbose_command($as, "$temp_file.fis", "-o", $out_file);
     unlink("$temp_file.s");
     unlink("$temp_file-nostr.s");
@@ -141,6 +145,9 @@ if ($minus_c and @c_files) {
 	die "Verification failed" unless $okay;
 	print $okay;
 	unlink($dis_file);
+	verbose_command($real_compiler, "-o", $out_file, "-g",
+			qq/-DLOADER_FIO="$fio_file"/, $loader_c,
+			@loader_flags);
     }
 } else {
     die "That compiler mode is not supported!";
