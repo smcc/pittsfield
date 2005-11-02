@@ -16,7 +16,7 @@ handle("__umoddi3");
 handle("__moddi3");
 
 while (<>) {
-    next if m[^//] or /^\s*$/;
+    next if m[^//] or /^\s*$/ or /^#/;
     die unless / \*?(\w+)\(/;
     my $name = $1;
     handle($name);
