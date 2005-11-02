@@ -5,6 +5,8 @@ struct stat {
     nlink_t st_nlink;
     ino_t st_ino;
     dev_t st_dev;
+    uid_t st_uid;
+    gid_t st_gid;
 };
 
 REPLACEMENT int fstat(int fd, struct stat *buf);
