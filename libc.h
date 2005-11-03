@@ -231,6 +231,9 @@ struct stat {
     dev_t st_dev;
     uid_t st_uid;
     gid_t st_gid;
+    dev_t st_rdev;
+    time_t st_atime;
+    time_t st_ctime;
 };
 #endif
 
@@ -450,6 +453,10 @@ REPLACEMENT_STATIC inline char *strrchr(const char *s, int c) {
 #define EPIPE           32      /* Broken pipe */
 #define EDOM            33      /* Math argument out of domain of func */
 #define ERANGE          34      /* Math result not representable */
+#define EDEADLK         35      /* Resource deadlock would occur */
+#define ENAMETOOLONG    36      /* File name too long */
+#define ENOLCK          37      /* No record locks available */
+#define ENOSYS          38      /* Function not implemented */
 
 extern int sys_nerr;
 
@@ -572,6 +579,8 @@ REPLACEMENT int access(const char *pathname, int mode);
 REPLACEMENT int close(int fd);
 REPLACEMENT int chmod(const char *path, mode_t mode);
 REPLACEMENT char *ctime(const time_t *timep);
+REPLACEMENT int dup(int oldfd);
+REPLACEMENT int dup2(int oldfd, int newfd);
 #ifdef NEED_STAT
 REPLACEMENT int fstat(int fd, struct stat *buf);
 #endif
@@ -583,7 +592,9 @@ REPLACEMENT int isatty(int fd);
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence);
 REPLACEMENT struct tm *localtime(const time_t *timep);
 REPLACEMENT int open(const char *pathname, int flags, ...);
+REPLACEMENT int pipe(int fds[2]);
 REPLACEMENT int read(int fd, void *buf, size_t count);
+REPLACEMENT int rename(const char *oldpath, const char *newpath);
 REPLACEMENT int select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
 		       struct timeval *tv);
 #ifdef NEED_STAT
@@ -646,6 +657,7 @@ REPLACEMENT int atol(const char *nptr);
 
 #define getchar() fgetc(stdin)
 
+REPLACEMENT void clearerr(FILE *stream);
 REPLACEMENT FILE *fopen(const char *path, const char *mode);
 REPLACEMENT FILE *fdopen(int fd, const char *mode);
 REPLACEMENT int fclose(FILE *stream);
@@ -696,9 +708,16 @@ typedef struct {
     int frame_ptr;
     int return_addr;
     int stack_ptr;
+    /* -- Above here is used by __builtin_(set|long)jmp */
+    int return_value;
 } jmp_buf[1];
-#define setjmp __builtin_setjmp
-#define longjmp __builtin_longjmp
+
+#define setjmp(env) ((env)[0].return_value = 0,	\
+                     __builtin_setjmp(env),\
+                     (env)[0].return_value)
+
+#define longjmp(env,val) ((env)[0].return_value = (val),\
+                          __builtin_longjmp((env), 1)) 
 
 extern char **environ;
 

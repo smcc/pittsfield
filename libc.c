@@ -263,6 +263,18 @@ REPLACEMENT char *ctime(const time_t *timep) {
     return "Wed Jun 30 21:49:08 1993\n";
 }
 
+REPLACEMENT int dup2(int oldfd, int newfd) {
+    int ret = outside_dup2(oldfd, newfd);
+    refresh_errno();
+    return ret;
+}
+
+REPLACEMENT int dup(int oldfd) {
+    int ret = outside_dup(oldfd);
+    refresh_errno();
+    return ret;
+}
+
 REPLACEMENT uid_t getuid(void)  { return 15168; }
 REPLACEMENT uid_t geteuid(void) { return 15168; }
 REPLACEMENT gid_t getgid(void)  { return 15168; }
@@ -310,10 +322,21 @@ REPLACEMENT int open(const char *pathname, int flags, ...) {
     return ret;    
 }
 
+REPLACEMENT int pipe(int fds[2]) {
+    errno = ENOSYS;
+    return -1;
+}
+
 REPLACEMENT int read(int fd, void *buf, size_t count) {
     int ret = outside_read(fd, buf, count);
     refresh_errno();
     return ret;    
+}
+
+REPLACEMENT int rename(const char *oldpath, const char *newpath) {
+    int ret = outside_rename(oldpath, newpath);
+    refresh_errno();
+    return ret;
 }
 
 /* 186.crafty uses this, believe it or not. */
@@ -482,6 +505,10 @@ REPLACEMENT int labs(long x) {
 
 REPLACEMENT int atol(const char *nptr) {
     return atoi(nptr);
+}
+
+REPLACEMENT void clearerr(FILE *stream) {
+    outside_clearerr(*stream);
 }
 
 REPLACEMENT FILE *fopen(const char *path, const char *mode) {

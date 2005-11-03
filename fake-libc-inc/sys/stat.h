@@ -7,6 +7,9 @@ struct stat {
     dev_t st_dev;
     uid_t st_uid;
     gid_t st_gid;
+    dev_t st_rdev;
+    time_t st_atime;
+    time_t st_ctime;
 };
 
 REPLACEMENT int fstat(int fd, struct stat *buf);

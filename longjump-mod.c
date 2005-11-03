@@ -7,13 +7,15 @@ void loop(void) {
     for (i = 0; i < 10; i++) {
 	printf("Iteration %d\n", i);
 	if (i == 5)
-	    longjmp(escape_buf, 1);
+	    longjmp(escape_buf, i);
     }
 }
 
 int main(int argc, char **argv) {
-    if (!setjmp(escape_buf)) {
+    int ret_val;
+    if (!(ret_val = setjmp(escape_buf))) {
 	loop();
     }
-    printf("Done\n");
+    printf("Done (%d)\n", ret_val);
+    return 0;
 }

@@ -377,8 +377,10 @@ struct inside_stat {
     ino_t inside_st_ino;
     dev_t inside_st_dev;
     uid_t inside_st_uid;
-    gid_t inside_st_gid
-
+    gid_t inside_st_gid;
+    dev_t inside_st_rdev;
+    time_t inside_st_atime;
+    time_t inside_st_ctime;
 };
 
 int wrap_outside_stat(const char *fname, struct inside_stat *in_buf) {
@@ -393,6 +395,9 @@ int wrap_outside_stat(const char *fname, struct inside_stat *in_buf) {
 	in_buf->inside_st_dev = buf.st_dev;
 	in_buf->inside_st_uid = buf.st_uid;
 	in_buf->inside_st_gid = buf.st_gid;
+	in_buf->inside_st_rdev = buf.st_rdev;
+	in_buf->inside_st_atime = buf.st_atime;
+	in_buf->inside_st_ctime = buf.st_ctime;
     }
     return ret;
 }
@@ -409,6 +414,9 @@ int wrap_outside_lstat(const char *fname, struct inside_stat *in_buf) {
 	in_buf->inside_st_dev = buf.st_dev;
 	in_buf->inside_st_uid = buf.st_uid;
 	in_buf->inside_st_gid = buf.st_gid;
+	in_buf->inside_st_rdev = buf.st_rdev;
+	in_buf->inside_st_atime = buf.st_atime;
+	in_buf->inside_st_ctime = buf.st_ctime;
     }
     return ret;
 }
@@ -425,6 +433,9 @@ int wrap_outside_fstat(int fd, struct inside_stat *in_buf) {
 	in_buf->inside_st_dev = buf.st_dev;
 	in_buf->inside_st_uid = buf.st_uid;
 	in_buf->inside_st_gid = buf.st_gid;
+	in_buf->inside_st_rdev = buf.st_rdev;
+	in_buf->inside_st_atime = buf.st_atime;
+	in_buf->inside_st_ctime = buf.st_ctime;
     }
     return ret;
 }
@@ -465,6 +476,22 @@ int wrap_outside_isatty(int fd) {
 int wrap_outside_select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
 			struct timeval *tv) {
     return select(n, rfds, wfds, xfds, tv);
+}
+
+int wrap_outside_dup(int oldfd) {
+    return dup(oldfd);
+}
+
+int wrap_outside_dup2(int oldfd, int newfd) {
+    return dup2(oldfd, newfd);
+}
+
+void wrap_outside_clearerr(int fi) {
+    clearerr(files[fi]);
+}
+
+int wrap_outside_rename(const char *oldpath, const char *newpath) {
+    return rename(oldpath, newpath);
 }
 
 void wrap_fail_check(void) {
