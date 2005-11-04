@@ -547,6 +547,10 @@ void wrap_outside_setbuf(int fi, char *buf) {
     setbuf(files[fi], buf);
 }
 
+double wrap_tan(double theta) {
+    return tan(theta);
+}
+
 
 void wrap_fail_check(void) {
     printf("Program has performed an illegal operation "

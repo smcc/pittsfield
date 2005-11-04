@@ -80,6 +80,7 @@ int sscanf(const char *str, const char *format, ...);
 int outside_stat(const char *fname, struct stat *buf);
 #endif
 char *outside_strerror(int errnum);
+double tan(double theta);
 clock_t outside_times(struct tms *buf);
 int outside_truncate(const char *path, off_t length);
 mode_t umask(mode_t mask);

@@ -471,6 +471,14 @@ REPLACEMENT sighandler_t signal(int signum, sighandler_t handler) {
     return 0;
 }
 
+REPLACEMENT long sysconf(int name) {
+    if (name == _SC_CLK_TCK) {
+	return 1000;
+    } else {
+	return -1;
+    }
+}
+
 /* Not implemented, for obvious reasons. But SPECint's gcc tries to
    call it. */
 REPLACEMENT int system(const char *string) {

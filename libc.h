@@ -32,6 +32,9 @@ struct timezone {
     int  tz_dsttime;     /* type of dst correction */
 };
 
+#define RUSAGE_SELF     0
+#define RUSAGE_CHILDREN -1
+
 struct rusage {
     struct timeval ru_utime; /* user time used */
     struct timeval ru_stime; /* system time used */
@@ -242,7 +245,13 @@ struct stat {
 
 #include "stubs.h"
 
+#ifdef __cplusplus
+/* Avoid "`abort()' has type `void' and is not a throw-expression",
+   warning, which I don't understand. */
+#define assert(e)
+#else
 #define assert(e) ((void)((e) ? 0 : abort()))
+#endif
 
 REPLACEMENT_STATIC inline void *memchr(const void *s, int c, size_t n) {
     unsigned i;
@@ -576,6 +585,8 @@ struct tm {
     int tm_isdst;
 };
 
+#define _SC_CLK_TCK 2
+
 REPLACEMENT int getpagesize();
 REPLACEMENT char *getcwd(char *buf, size_t size);
 REPLACEMENT int access(const char *pathname, int mode);
@@ -627,6 +638,7 @@ REPLACEMENT int stat(const char *file_name, struct stat *buf);
 #endif
 #endif
 REPLACEMENT sighandler_t signal(int signum, sighandler_t handler);
+REPLACEMENT long sysconf(int name);
 REPLACEMENT int system(const char *string);
 REPLACEMENT time_t time(time_t *t);
 REPLACEMENT clock_t times(struct tms *buf);
