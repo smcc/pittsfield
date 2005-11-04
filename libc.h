@@ -20,6 +20,7 @@ typedef struct __dirstream DIR;
 
 typedef unsigned int uid_t;
 typedef unsigned int gid_t;
+typedef int pid_t;
 
 struct timeval {
     long tv_sec;
@@ -213,7 +214,9 @@ extern FILE *stdout;
 extern FILE *stderr;
 
 REPLACEMENT int fprintf(FILE *stream, const char *format, ...);
+#ifndef HIDE_MALLOC_PROTOS
 REPLACEMENT void *malloc(size_t nbytes);
+#endif
 REPLACEMENT_STATIC char *strcpy(char *buf, const char *src);
 REPLACEMENT char *strdup(const char *s);
 
@@ -577,26 +580,46 @@ REPLACEMENT int getpagesize();
 REPLACEMENT char *getcwd(char *buf, size_t size);
 REPLACEMENT int access(const char *pathname, int mode);
 REPLACEMENT int close(int fd);
+REPLACEMENT int chdir(const char *path);
 REPLACEMENT int chmod(const char *path, mode_t mode);
 REPLACEMENT char *ctime(const time_t *timep);
 REPLACEMENT int dup(int oldfd);
 REPLACEMENT int dup2(int oldfd, int newfd);
+REPLACEMENT int execl(const char *path, const char *arg, ...); 
+REPLACEMENT int execlp(const char *file, const char *arg, ...);
+REPLACEMENT int execle(const char *path, const char *arg, ...);
+REPLACEMENT int execv(const char *path, char *const argv[]);
+REPLACEMENT int execvp(const char *file, char *const argv[]);
+REPLACEMENT int execve(const char *path, char *const argv[],
+		       char *const envp[]);
+REPLACEMENT void _exit(int status);
+REPLACEMENT int fcntl(int fd, int cmd, ...);
+REPLACEMENT pid_t fork(void);
 #ifdef NEED_STAT
 REPLACEMENT int fstat(int fd, struct stat *buf);
 #endif
+REPLACEMENT int ftruncate(int fd, off_t length);
 REPLACEMENT uid_t getuid(void);
 REPLACEMENT uid_t geteuid(void);
 REPLACEMENT gid_t getgid(void);
 REPLACEMENT gid_t getegid(void);
+REPLACEMENT pid_t getpid(void);
+REPLACEMENT struct tm *gmtime(const time_t *timep);
+REPLACEMENT int ioctl(int fd, int request, ...);
 REPLACEMENT int isatty(int fd);
+REPLACEMENT int kill(pid_t pid, int sig);
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence);
 REPLACEMENT struct tm *localtime(const time_t *timep);
+REPLACEMENT int mkdir(const char *pathname, mode_t mode);
 REPLACEMENT int open(const char *pathname, int flags, ...);
 REPLACEMENT int pipe(int fds[2]);
 REPLACEMENT int read(int fd, void *buf, size_t count);
 REPLACEMENT int rename(const char *oldpath, const char *newpath);
+REPLACEMENT int rmdir(const char *path);
 REPLACEMENT int select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
 		       struct timeval *tv);
+REPLACEMENT int setuid(uid_t uid);
+REPLACEMENT int setgid(gid_t gid);
 #ifdef NEED_STAT
 REPLACEMENT int mystat(const char *file_name, struct stat *buf);
 #ifndef NO_STUBS
@@ -607,8 +630,12 @@ REPLACEMENT sighandler_t signal(int signum, sighandler_t handler);
 REPLACEMENT int system(const char *string);
 REPLACEMENT time_t time(time_t *t);
 REPLACEMENT clock_t times(struct tms *buf);
+REPLACEMENT int truncate(const char *path, off_t length);
+REPLACEMENT char *ttyname(int fd);
 REPLACEMENT int unlink(const char *path);
 REPLACEMENT int utime(const char *filename, const struct utimbuf *buf);
+REPLACEMENT pid_t wait(int *status);
+REPLACEMENT ssize_t write(int fd, const void *buf, size_t count);
 
 /* directories */
 
@@ -679,12 +706,15 @@ REPLACEMENT int feof(FILE *stream);
 REPLACEMENT int fprintf(FILE *stream, const char *format, ...);
 REPLACEMENT int vfprintf(FILE *stream, const char *format, va_list ap);
 REPLACEMENT int vasprintf(char **strp, const char *fmt, va_list ap);
+REPLACEMENT void setbuf(FILE *stream, char *buf);
 REPLACEMENT int asprintf(char **str, const char *fmt, ...);
 REPLACEMENT int snprintf(char *str, size_t size, const char *format, ...);
 REPLACEMENT int fscanf(FILE *stream, const char *fmt, ...);
 REPLACEMENT int scanf(const char *fmt, ...);
 REPLACEMENT size_t fread(void *ptr, size_t size, size_t num, FILE *stream);
 REPLACEMENT int remove(const char *path);
+REPLACEMENT FILE *tmpfile(void);
+REPLACEMENT char *tmpnam(char *s);
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -701,6 +731,62 @@ REPLACEMENT int ungetc(int c, FILE *stream);
 
 /* internationalization */
 REPLACEMENT const char *gettext(const char *msgid);
+
+/* termio(s) */
+typedef unsigned char cc_t;
+typedef unsigned int speed_t;
+typedef unsigned int tcflag_t;
+
+struct termio {
+    tcflag_t c_iflag;
+    tcflag_t c_lflag;
+    cc_t c_cc[32];
+};
+
+#define HZ 100
+
+#define VINTR 0
+#define VQUIT 1
+#define VERASE 2
+#define VKILL 3
+#define VEOF 4
+#define VTIME 5
+#define VMIN 6
+#define VSWTC 7
+#define VSTART 8
+#define VSTOP 9
+#define VSUSP 10
+#define VEOL 11
+#define VREPRINT 12
+#define VDISCARD 13
+#define VWERASE 14
+#define VLNEXT 15
+#define VEOL2 16
+#define IGNBRK  0000001
+#define BRKINT  0000002
+#define IGNPAR  0000004
+#define PARMRK  0000010
+#define INPCK   0000020
+#define ISTRIP  0000040
+#define INLCR   0000100
+#define IGNCR   0000200
+#define ICRNL   0000400
+#define IUCLC   0001000
+#define IXON    0002000
+#define IXANY   0004000
+#define IXOFF   0010000
+#define IMAXBEL 0020000
+#define ISIG    0000001
+#define ICANON  0000002
+#define ECHO    0000010
+#define ECHOE   0000020
+#define ECHOK   0000040
+#define ECHONL  0000100
+#define NOFLSH  0000200
+#define TOSTOP  0000400
+#define TCGETA                0x5405
+#define TCSETAW               0x5407
+
 
 /* I couldn't find any documentation for __builtin_setjmp; this layout for
    jmp_buf was determined empirically. */
@@ -723,10 +809,12 @@ extern char **environ;
 
 #ifndef REAL_MALLOC
 
+/* 300.twolf wants to declare these itself, incorrectly. */
+#ifndef HIDE_MALLOC_PROTOS
 REPLACEMENT void *malloc(unsigned nbytes);
-
-REPLACEMENT void free(void *vp);
+REPLACEMENT void free(void *vp, ...);
 REPLACEMENT void *realloc(void *vp, unsigned nbytes);
+#endif
 
 #else
 
@@ -736,8 +824,10 @@ void *realloc(void *vp, unsigned nbytes);
 #endif
 
 /* calloc, vmalloc by SMcC */
+#ifndef HIDE_MALLOC_PROTOS
 REPLACEMENT void *calloc(size_t nmemb, size_t size);
 REPLACEMENT void *vmalloc(size_t size);
+#endif
 
 /* ------- Code below this line came from dietlibc, under the GPL -------- */
 

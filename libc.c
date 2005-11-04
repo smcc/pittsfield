@@ -253,6 +253,12 @@ REPLACEMENT int close(int fd) {
     return ret;
 }
 
+REPLACEMENT int chdir(const char *path) {
+    int ret = outside_chdir(path);
+    refresh_errno();
+    return ret;
+}
+
 REPLACEMENT int chmod(const char *path, mode_t mode) {
     int ret = outside_chmod(path, mode);
     refresh_errno();
@@ -275,10 +281,57 @@ REPLACEMENT int dup(int oldfd) {
     return ret;
 }
 
+REPLACEMENT int execl(const char *path, const char *arg, ...) {
+    errno = ENOSYS;
+    return -1;
+}
+
+REPLACEMENT int execlp(const char *file, const char *arg, ...) {
+    errno = ENOSYS;
+    return -1;
+}
+
+REPLACEMENT int execle(const char *path, const char *arg, ...) {
+    errno = ENOSYS;
+    return -1;
+}
+
+REPLACEMENT int execv(const char *path, char *const argv[]) {
+    errno = ENOSYS;
+    return -1;
+}
+
+REPLACEMENT int execvp(const char *file, char *const argv[]) {
+    errno = ENOSYS;
+    return -1;
+}
+
+REPLACEMENT int execve(const char *path, char *const argv[],
+		       char *const envp[]) {
+    errno = ENOSYS;
+    return -1;
+}
+
+/* As long as we don't have atexit(), these are the same */
+REPLACEMENT void _exit(int status) {
+    exit(status);
+}
+
+REPLACEMENT int fcntl(int fd, int cmd, ...) {
+    errno = ENOSYS;
+    return -1;
+}
+
+REPLACEMENT pid_t fork(void) {
+    errno = ENOSYS;
+    return -1;
+}
+
 REPLACEMENT uid_t getuid(void)  { return 15168; }
 REPLACEMENT uid_t geteuid(void) { return 15168; }
 REPLACEMENT gid_t getgid(void)  { return 15168; }
 REPLACEMENT gid_t getegid(void) { return 15168; }
+REPLACEMENT pid_t getpid(void)  { return 2163;  }
 
 REPLACEMENT int fstat(int fd, struct stat *buf) {
     int ret = outside_fstat(fd, buf);
@@ -286,10 +339,26 @@ REPLACEMENT int fstat(int fd, struct stat *buf) {
     return ret;    
 }    
 
+REPLACEMENT int ftruncate(int fd, off_t length) {
+    int ret = outside_ftruncate(fd, length);
+    refresh_errno();
+    return ret;
+}
+
+REPLACEMENT int ioctl(int fd, int request, ...) {
+    errno = ENOSYS;
+    return -1;
+}
+
 REPLACEMENT int isatty(int fd) {
     int ret = outside_isatty(fd);
     refresh_errno();
     return ret;
+}
+
+REPLACEMENT int kill(pid_t pid, int sig) {
+    errno = EPERM;
+    return -1;
 }
 
 REPLACEMENT off_t lseek(int fd, off_t offset, int whence) {
@@ -310,6 +379,26 @@ REPLACEMENT struct tm *localtime(const time_t *timep) {
     t.tm_yday = 180;
     t.tm_isdst = 1;
     return &t;
+}
+
+REPLACEMENT struct tm *gmtime(const time_t *timep) {
+    static struct tm t;
+    t.tm_sec = 8;
+    t.tm_min = 49;
+    t.tm_hour = 16;
+    t.tm_mday = 30;
+    t.tm_mon = 5;
+    t.tm_year = 93;
+    t.tm_wday = 3;
+    t.tm_yday = 180;
+    t.tm_isdst = 0;
+    return &t;
+}
+
+REPLACEMENT int mkdir(const char *pathname, mode_t mode) {
+    int ret = outside_mkdir(pathname, mode);
+    refresh_errno();
+    return ret;
 }
 
 REPLACEMENT int open(const char *pathname, int flags, ...) {
@@ -339,12 +428,28 @@ REPLACEMENT int rename(const char *oldpath, const char *newpath) {
     return ret;
 }
 
+REPLACEMENT int rmdir(const char *path) {
+    int ret = outside_rmdir(path);
+    refresh_errno();
+    return ret;
+}
+
 /* 186.crafty uses this, believe it or not. */
 REPLACEMENT int select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds, 
 		       struct timeval *tv) {
     int ret = outside_select(n, rfds, wfds, xfds, tv);
     refresh_errno();
     return ret;
+}
+
+REPLACEMENT int setuid(uid_t uid) {
+    errno = EPERM;
+    return -1;
+}
+
+REPLACEMENT int setgid(gid_t gid) {
+    errno = EPERM;
+    return -1;
 }
 
 REPLACEMENT int mystat(const char *file_name, struct stat *buf) {
@@ -392,6 +497,21 @@ REPLACEMENT clock_t times(struct tms *buf) {
     return ret;    
 }	
 
+REPLACEMENT int truncate(const char *path, off_t length) {
+    int ret = outside_truncate(path, length);
+    refresh_errno();
+    return ret;
+}
+
+REPLACEMENT char *ttyname(int fd) {
+    if (isatty(fd)) {
+	return "/dev/tty";
+    } else {
+	errno = ENOTTY;
+	return 0;
+    }
+}
+
 REPLACEMENT int unlink(const char *path) {
     int ret = outside_unlink(path);
     refresh_errno();
@@ -401,6 +521,19 @@ REPLACEMENT int unlink(const char *path) {
 REPLACEMENT int utime(const char *filename, const struct utimbuf *buf) {
     return 0;
 }
+
+REPLACEMENT pid_t wait(int *status) {
+    int ret = outside_wait(status);
+    refresh_errno();
+    return ret;
+}
+
+REPLACEMENT ssize_t write(int fd, const void *buf, size_t count) {
+    int ret = outside_write(fd, buf, count);
+    refresh_errno();
+    return ret;
+}
+
 
 /* directories */
 
@@ -720,6 +853,30 @@ REPLACEMENT void rewind(FILE *stream) {
 
 REPLACEMENT int remove(const char *path) {
     return unlink(path);
+}
+
+REPLACEMENT void setbuf(FILE *stream, char *buf) {
+    outside_setbuf(*stream, buf);
+}
+
+REPLACEMENT FILE *tmpfile(void) {
+    static int count = 0;
+    char filename[] = "/tmp/temp0000";
+    filename[12] =  count         % 10;
+    filename[11] = (count / 10)   % 10;
+    filename[10] = (count / 100)  % 10;
+    filename [9] = (count / 1000) % 10;
+    count++;
+    return fopen(filename, "w+b");
+}
+
+REPLACEMENT char *tmpnam(char *s) {
+    if (s) {
+	strcpy(s, "/tmp/foo");
+	return s;
+    } else {
+	return "/tmp/bar";
+    }
 }
 
 REPLACEMENT int ungetc(int c, FILE *stream) {

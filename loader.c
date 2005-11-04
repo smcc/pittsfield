@@ -5,6 +5,7 @@
 #include <sys/times.h>
 #include <sys/types.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -493,6 +494,59 @@ void wrap_outside_clearerr(int fi) {
 int wrap_outside_rename(const char *oldpath, const char *newpath) {
     return rename(oldpath, newpath);
 }
+
+int wrap_outside_chdir(const char *path) {
+    return chdir(path);
+}
+
+int wrap_vsprintf(char *str, const char *format, va_list ap) {
+    return vsprintf(str, format, ap);
+}
+
+double wrap_atan2(double y, double x) {
+    return atan2(y, x);
+}
+
+double wrap_modf(double x, double *iptr) {
+    return modf(x, iptr);
+}
+
+unsigned int wrap_sleep(unsigned int secs) {
+    return sleep(secs);
+}
+
+pid_t wrap_outside_wait(int *status) {
+    return wait(status);
+}
+
+mode_t wrap_umask(mode_t mask) {
+    return umask(mask);
+}
+
+int wrap_outside_write(int fd, const void *buf, size_t count) {
+    return write(fd, buf, count);
+}
+
+int wrap_outside_truncate(const char *path, off_t length) {
+    return truncate(path, length);
+}
+
+int wrap_outside_ftruncate(int fd, off_t length) {
+    return ftruncate(fd, length);
+}
+
+int wrap_outside_mkdir(const char *pathname, mode_t mode) {
+    return mkdir(pathname, mode);
+}
+
+int wrap_outside_rmdir(const char *path) {
+    return rmdir(path);
+}
+
+void wrap_outside_setbuf(int fi, char *buf) {
+    setbuf(files[fi], buf);
+}
+
 
 void wrap_fail_check(void) {
     printf("Program has performed an illegal operation "
