@@ -55,11 +55,11 @@ libc-no-stubs.o:	libc.c libc.h
 %.mo:	%.fis
 	$(AS) $*.fis -o $*.mo
 
-crtbegin.o: crtbegin.s
-	$(AS) crtbegin.s -o crtbegin.o
+crtbegin.o: crtbegin.S
+	$(AS) crtbegin.S -o crtbegin.o
 
-crtend.o: crtend.s
-	$(AS) crtend.s -o crtend.o
+crtend.o: crtend.S
+	$(AS) crtend.S -o crtend.o
 
 %-cpp-mod.fio:	%-cpp-mod.mo libc.mo crtbegin.o crtend.o libcplusplus.mo link-c++.x
 	ld $(SECTION) -T link-c++.x crtbegin.o libc.mo libcplusplus.mo $*-cpp-mod.mo crtend.o -o $*-cpp-mod.fio
