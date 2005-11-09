@@ -12,6 +12,7 @@ my $verify = "$pittsfield_dir/verify.pl";
 my $perl = "/usr/bin/perl";
 my $as = "/usr/bin/as";
 my $libc_mo = "$pittsfield_dir/libc.mo";
+my $libcplusplus_mo = "$pittsfield_dir/libcplusplus.mo";
 my $ld = "/usr/bin/ld";
 my @ld_args = ("--section-start" => ".text=0x90000000",
 	       "--section-start" => ".data=0x40000000",
@@ -21,6 +22,9 @@ my $objdump = "/usr/bin/objdump";
 my $fio_dir = "/scratch/smcc/pittsfield-fios";
 my $loader_c = "$pittsfield_dir/loader.c";
 my $highlink_x = "$pittsfield_dir/high-link.x";
+my $linkcpp_x = "$pittsfield_dir/link-c++.x";
+my $crtbegin_o = "$pittsfield_dir/crtbegin.o";
+my $crtend_o = "$pittsfield_dir/crtend.o";
 my @loader_flags = ("-static", "-lelf", "-lm",
 		    "-Wl,-T" => "-Wl,$highlink_x");
 
@@ -132,7 +136,17 @@ if ($minus_c and @c_files) {
 
 	my $fio_file = "$fio_dir/$out_file$$.fio";
 
-	verbose_command($ld, "-o", $fio_file, @ld_args, $libc_mo, @args);
+	if ($real_compiler =~ /\+\+/) {
+	    # Besides linking in our equivalent of libstdc++.a, we
+	    # also need to do more linker trickery to make calling
+	    # static constructors work.
+	    unshift @ld_args, $crtbegin_o;
+	    push @ld_args, $crtend_o;
+	    push @ld_args, $libcplusplus_mo;
+	    push @ld_args, ("-T" => "$linkcpp_x");
+	}
+
+	verbose_command($ld, "-o", $fio_file, $libc_mo, @ld_args, @args);
 	verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
 	open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
 	my $okay = 0;

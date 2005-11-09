@@ -1,5 +1,5 @@
-SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000 -e main
-#SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000 -e main
+SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000
+#SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000
 
 VERSION:=0.2
 
@@ -54,6 +54,15 @@ libc-no-stubs.o:	libc.c libc.h
 
 %.mo:	%.fis
 	$(AS) $*.fis -o $*.mo
+
+crtbegin.o: crtbegin.s
+	$(AS) crtbegin.s -o crtbegin.o
+
+crtend.o: crtend.s
+	$(AS) crtend.s -o crtend.o
+
+%-cpp-mod.fio:	%-cpp-mod.mo libc.mo crtbegin.o crtend.o libcplusplus.mo link-c++.x
+	ld $(SECTION) -T link-c++.x crtbegin.o libc.mo libcplusplus.mo $*-cpp-mod.mo crtend.o -o $*-cpp-mod.fio
 
 %.fio:	%.mo libc.mo
 	ld $(SECTION) libc.mo $*.mo -o $*.fio
