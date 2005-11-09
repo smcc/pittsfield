@@ -35,3 +35,4 @@ stub-list
 wrappers.h
 topformflat
 *.mo
+*-fewer-lines.c
