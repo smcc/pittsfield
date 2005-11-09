@@ -1,5 +1,8 @@
 #ifndef PITTSFIELD_LIBC_H_INCLUDED
 #define PITTSFIELD_LIBC_H_INCLUDED
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef signed long ptrdiff_t;
 typedef unsigned int size_t;
 typedef int ssize_t;
@@ -250,8 +253,13 @@ struct stat {
    warning, which I don't understand. */
 #define assert(e)
 #else
-#define assert(e) ((void)((e) ? 0 : abort()))
+/* Calling abort() here has the disadvantage that because it calls
+   back outside the sandbox, it makes it hard for GDB to get a good
+   backtrace. Let's try making a SIGTRAP instead. */
+#define assert(e) ((void)((e) ? 0 : myabort()))
 #endif
+
+void myabort(void);
 
 REPLACEMENT_STATIC inline void *memchr(const void *s, int c, size_t n) {
     unsigned i;
@@ -596,9 +604,9 @@ REPLACEMENT int chmod(const char *path, mode_t mode);
 REPLACEMENT char *ctime(const time_t *timep);
 REPLACEMENT int dup(int oldfd);
 REPLACEMENT int dup2(int oldfd, int newfd);
-REPLACEMENT int execl(const char *path, const char *arg, ...); 
-REPLACEMENT int execlp(const char *file, const char *arg, ...);
-REPLACEMENT int execle(const char *path, const char *arg, ...);
+REPLACEMENT int execl(const char *path, ...); 
+REPLACEMENT int execlp(const char *file, ...);
+REPLACEMENT int execle(const char *path, ...);
 REPLACEMENT int execv(const char *path, char *const argv[]);
 REPLACEMENT int execvp(const char *file, char *const argv[]);
 REPLACEMENT int execve(const char *path, char *const argv[],
@@ -615,7 +623,6 @@ REPLACEMENT uid_t geteuid(void);
 REPLACEMENT gid_t getgid(void);
 REPLACEMENT gid_t getegid(void);
 REPLACEMENT pid_t getpid(void);
-REPLACEMENT struct tm *gmtime(const time_t *timep);
 REPLACEMENT int ioctl(int fd, int request, ...);
 REPLACEMENT int isatty(int fd);
 REPLACEMENT int kill(pid_t pid, int sig);
@@ -824,7 +831,12 @@ extern char **environ;
 /* 300.twolf wants to declare these itself, incorrectly. */
 #ifndef HIDE_MALLOC_PROTOS
 REPLACEMENT void *malloc(unsigned nbytes);
+#ifdef TWO_ARGUMENT_FREE
+  /* c.f. 300.twolf lists.h line 67 */
 REPLACEMENT void free(void *vp, ...);
+#else
+REPLACEMENT void free(void *vp);
+#endif
 REPLACEMENT void *realloc(void *vp, unsigned nbytes);
 #endif
 
@@ -869,4 +881,9 @@ REPLACEMENT int strcasecmp(const char *s1, const char *s2);
 REPLACEMENT void *bsearch(const void *key, const void *base, size_t nmemb,
 			  size_t size,
 			  int (*compar)(const void*, const void*));
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 #endif /* PITTSFIELD_LIBC_H_INCLUDED */

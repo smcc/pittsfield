@@ -1,3 +1,4 @@
+#undef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -68,26 +69,33 @@ int call_in(void *addr, int argc, char **argv) {
     return exit_value;
 }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern unsigned long long
 __udivdi3(unsigned long long a, unsigned long long b);
+extern long long
+__divdi3(long long a, long long b);
+extern unsigned long long
+__umoddi3(unsigned long long a, unsigned long long b);
+extern long long
+__moddi3(long long a, long long b);
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 unsigned long long wrap___udivdi3(unsigned long long a, unsigned long long b) {
     return __udivdi3(a, b);
 }
 
-extern long long
-__divdi3(long long a, long long b);
 long long wrap___divdi3(long long a, long long b) {
     return __divdi3(a, b);
 }
 
-extern unsigned long long
-__umoddi3(unsigned long long a, unsigned long long b);
 unsigned long long wrap___umoddi3(unsigned long long a, unsigned long long b) {
     return __umoddi3(a, b);
 }
 
-extern long long
-__moddi3(long long a, long long b);
 long long wrap___moddi3(long long a, long long b) {
     return __moddi3(a, b);
 }
@@ -113,7 +121,7 @@ int wrap_putchar(int c) {
 void *data_break;
 
 void *wrap_sbrk(long incr) {
-    void *new_brk = data_break + incr;
+    void *new_brk = (void *)((long)data_break + incr);
     if ((unsigned)new_brk > (unsigned)DATA_START &&
 	(unsigned)new_brk < (unsigned)DATA_END) {
 	void *old_brk = data_break;
@@ -274,6 +282,10 @@ long wrap_lrintf(float x) {
 
 double wrap_acos(double x) {
     return acos(x);
+}
+
+double wrap_asin(double x) {
+    return asin(x);
 }
 
 double wrap_atan(double x) {
@@ -550,6 +562,27 @@ void wrap_outside_setbuf(int fi, char *buf) {
 double wrap_tan(double theta) {
     return tan(theta);
 }
+
+pid_t wrap_outside_fork(void) {
+    return fork();
+}
+
+int wrap_outside_execvp(const char *file, char *const argv[]) {
+    return execvp(file, argv);
+}
+
+int wrap_outside_execv(const char *file, char *const argv[]) {
+    return execvp(file, argv);
+}
+
+int wrap_outside_pipe(int fds[2]) {
+    return pipe(fds);
+}
+
+struct tm *wrap_gmtime(const time_t *timep) {
+    return gmtime(timep);
+}
+
 
 
 void wrap_fail_check(void) {

@@ -227,6 +227,10 @@ REPLACEMENT char *strrchr(const char *s, int c) {
 
 int sys_nerr = 34;
 
+void myabort(void) {
+    asm("int3");
+}
+
 REPLACEMENT int getpagesize() {
     return 8192;
 }
@@ -281,33 +285,55 @@ REPLACEMENT int dup(int oldfd) {
     return ret;
 }
 
-REPLACEMENT int execl(const char *path, const char *arg, ...) {
+REPLACEMENT int execl(const char *path, ...) {
+    va_list ap;
+    char *argv[256]; /* should really be dynamically allocated */
+    int i = 0, ret;
+    char *arg;
+
+    va_start(ap, path);
+    while ((arg = va_arg(ap, char *))) {
+	argv[i++] = arg;
+	if (i > 250) {
+	    errno = E2BIG;
+	    return -1;
+	}
+    }
+    argv[i] = 0;
+    va_end(ap);
+    
+    ret = outside_execv(path, argv);
+    refresh_errno();
+    return ret;
+}
+
+REPLACEMENT int execlp(const char *file, ...) {
+    myabort();
     errno = ENOSYS;
     return -1;
 }
 
-REPLACEMENT int execlp(const char *file, const char *arg, ...) {
+REPLACEMENT int execle(const char *path, ...) {
+    myabort();
     errno = ENOSYS;
     return -1;
 }
 
-REPLACEMENT int execle(const char *path, const char *arg, ...) {
-    errno = ENOSYS;
-    return -1;
-}
-
-REPLACEMENT int execv(const char *path, char *const argv[]) {
-    errno = ENOSYS;
-    return -1;
+REPLACEMENT int execv(const char *path, char *const argv[]) { 
+    int ret = outside_execv(path, argv);
+    refresh_errno();
+    return ret;
 }
 
 REPLACEMENT int execvp(const char *file, char *const argv[]) {
-    errno = ENOSYS;
-    return -1;
+    int ret = outside_execvp(file, argv);
+    refresh_errno();
+    return ret;
 }
 
 REPLACEMENT int execve(const char *path, char *const argv[],
 		       char *const envp[]) {
+    myabort();
     errno = ENOSYS;
     return -1;
 }
@@ -323,8 +349,9 @@ REPLACEMENT int fcntl(int fd, int cmd, ...) {
 }
 
 REPLACEMENT pid_t fork(void) {
-    errno = ENOSYS;
-    return -1;
+    int ret = outside_fork();
+    refresh_errno();
+    return ret;
 }
 
 REPLACEMENT uid_t getuid(void)  { return 15168; }
@@ -368,31 +395,7 @@ REPLACEMENT off_t lseek(int fd, off_t offset, int whence) {
 }
 
 REPLACEMENT struct tm *localtime(const time_t *timep) {
-    static struct tm t;
-    t.tm_sec = 8;
-    t.tm_min = 49;
-    t.tm_hour = 21;
-    t.tm_mday = 30;
-    t.tm_mon = 5;
-    t.tm_year = 93;
-    t.tm_wday = 3;
-    t.tm_yday = 180;
-    t.tm_isdst = 1;
-    return &t;
-}
-
-REPLACEMENT struct tm *gmtime(const time_t *timep) {
-    static struct tm t;
-    t.tm_sec = 8;
-    t.tm_min = 49;
-    t.tm_hour = 16;
-    t.tm_mday = 30;
-    t.tm_mon = 5;
-    t.tm_year = 93;
-    t.tm_wday = 3;
-    t.tm_yday = 180;
-    t.tm_isdst = 0;
-    return &t;
+    return gmtime(timep);
 }
 
 REPLACEMENT int mkdir(const char *pathname, mode_t mode) {
@@ -412,8 +415,9 @@ REPLACEMENT int open(const char *pathname, int flags, ...) {
 }
 
 REPLACEMENT int pipe(int fds[2]) {
-    errno = ENOSYS;
-    return -1;
+    int ret = outside_pipe(fds);
+    refresh_errno();
+    return ret;
 }
 
 REPLACEMENT int read(int fd, void *buf, size_t count) {
@@ -620,14 +624,14 @@ REPLACEMENT int isxdigit(int c) {
 
 REPLACEMENT int toupper(int c) {
     if (islower(c))
-	return 'c' - 'a' + 'A';
+	return c - 'a' + 'A';
     else
 	return c;
 }
 
 REPLACEMENT int tolower(int c) {
     if (isupper(c))
-	return 'c' - 'A' + 'a';
+	return c - 'A' + 'a';
     else
 	return c;
 }
@@ -902,6 +906,25 @@ REPLACEMENT const char *gettext(const char *msgid) {
 static char *empty_environment[1] = {0};
 char **environ = empty_environment;
 
+/* s/b unique per shared library. Since we don't have them, that's not
+   a problem. */
+void* __dso_handle = (void*)0;
+
+/* Let's see if we can get away without running any global destructors */
+int __cxa_atexit(void (*func) (void *), void *arg, void *d) {
+    return 0;
+}
+
+/* Overriden by global_constructors() in libcplusplus in C++ */
+void global_constructors(void) __attribute__ ((weak));
+
+void global_constructors(void) {}
+
+int main(int argc, char **argv);
+int _start(int argc, char **argv) {
+    global_constructors();
+    return main(argc, argv);
+}
 
 #ifndef REAL_MALLOC
 
@@ -1450,8 +1473,4 @@ REPLACEMENT void *bsearch(const void *key, const void *base, size_t nmemb,
 	}
     }
     return 0;
-}
-
-void * _Znwj(unsigned int n) {
-    return malloc(n);
 }
