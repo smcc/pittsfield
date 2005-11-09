@@ -35,10 +35,10 @@ if (grep($_ eq "-padonly", @ARGV)) {
     $do_align = 1;
     $do_sandbox = $do_no_rodata = 0;
     @ARGV = grep($_ ne "-padonly", @ARGV);
-} elsif (grep($_ eq "-no-ro-only", @ARGV)) {
+} elsif (grep($_ eq "-no-sand", @ARGV)) {
     $do_align = $do_no_rodata = 1;
     $do_sandbox = 0;
-    @ARGV = grep($_ ne "-no-ro-only", @ARGV);
+    @ARGV = grep($_ ne "-no-sand", @ARGV);
 }
 
 my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
@@ -298,6 +298,7 @@ sub maybe_rewrite {
 	} elsif ($target =~ /^\((%e[sb]p)\)$/) {
 	    return 0;
 	}
+	my $early_popf = ($DO_TEST || $op =~ /^set$cond$/);
 	a_emit("pushf", 1) if $precious_eflags;
 	a_emit("leal\t$target, %ebx", 6);
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST +
@@ -305,9 +306,10 @@ sub maybe_rewrite {
 	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
 	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
 	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
-	emit("popf", 1) if $precious_eflags and $DO_TEST;
+	emit("popf", 1) if $precious_eflags and $early_popf;
 	emit("$op\t(%ebx)", 3);
-	emit("popf", 1) if $precious_eflags and !$DO_TEST;
+	# XXX When is it the right thing to popf after the OP?
+	emit("popf", 1) if $precious_eflags and !$early_popf;
 	return 1;
     } elsif ($args =~ /^($immed|$reg), ($lword)$/) {
 	warn "Skipping bogus direct write $op $args";
@@ -464,7 +466,7 @@ if ($is_kernel) {
 	nop_pad($chunk_size - 7);
 	print "\tpushl %edx\n"; # argv - 1 byte
 	print "\tpushl %ecx\n"; # argc - 1 byte
-	print "\tcall main\n"; # 5 bytes
+	print "\tcall _start\n"; # 5 bytes
 	print "\taddl \$8,%esp\n"; # pop argc and argv
 	print "\tret\n";
 	print "\t.p2align $log_chunk_size\n";
@@ -567,9 +569,9 @@ while (<>) {
 	emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
 	emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
     }
-    if (/^\t(test|cmp|dec)/) {
+    if (/^\t(test|cmp|dec|and)/) {
 	$precious_eflags = 1;
-    } elsif (/^\tj$cond/) {
+    } elsif (/^\tj$cond\t/) {
 	$precious_eflags = 0;
     }
     #print "# <$.>\n" if ($. % 10) == 0;
