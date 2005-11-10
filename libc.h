@@ -697,7 +697,7 @@ REPLACEMENT int labs(long x);
 /* stdio */
 
 #define EOF (-1)
-#define BUFSIZ 4096
+#define BUFSIZ 8192
 
 REPLACEMENT int atol(const char *nptr);
 
