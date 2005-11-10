@@ -39,6 +39,10 @@ if (grep($_ eq "-padonly", @ARGV)) {
     $do_align = $do_no_rodata = 1;
     $do_sandbox = 0;
     @ARGV = grep($_ ne "-no-sand", @ARGV);
+} elsif (grep($_ eq "-no-rodata-only", @ARGV)) {
+    $do_no_rodata = 1;
+    $do_sandbox = $do_align = 0;
+    @ARGV = grep($_ ne "-no-rodata-only", @ARGV);
 }
 
 my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
@@ -571,7 +575,7 @@ while (<>) {
     }
     if (/^\t(test|cmp|dec|and)/) {
 	$precious_eflags = 1;
-    } elsif (/^\tj$cond\t/) {
+    } elsif (/^\tj($cond)\t/ and $1 ne "e") {
 	$precious_eflags = 0;
     }
     #print "# <$.>\n" if ($. % 10) == 0;
