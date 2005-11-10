@@ -523,7 +523,7 @@ while (<>) {
 	next;
     }
     if ($dirty_esp
-	and /^\t(jmp|cmp|inc|dec|add|sub|and|or|xor|test|shr|s[ah]l|sahf)/) {
+	and /^\t(jmp|cmp|inc|dec|add|sub|and|or|xor|test|s[ah]r|s[ah]l|sahf)/) {
 	if ($do_sandbox) {
 	    maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	    emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
