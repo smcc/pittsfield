@@ -423,7 +423,9 @@ while (<>) {
 	    and $addr != $code_start + 0x13) {
 	    printf "Unsafe %%esp escapes by jump at 0x%08x\n", $addr;
 	}
-	if ($op ne "popf") {
+	if ($op eq "popf") {
+	    $safety = $safety & (EBX_DATA_SAFE|EBX_CODE_SAFE);
+	} else {
 	    $safety = 0;
 	}
 	$safety |= $flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE|
