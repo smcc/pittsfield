@@ -423,9 +423,12 @@ while (<>) {
 	    and $addr != $code_start + 0x13) {
 	    printf "Unsafe %%esp escapes by jump at 0x%08x\n", $addr;
 	}
-	$safety = $flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE|
-			    EBX_DATA_XSAFE|EBX_CODE_XSAFE|STACK_TOP_XSAFE|
-			    EBP_DATA_SAFE|ESP_DATA_SAFE);
+	if ($op ne "popf") {
+	    $safety = 0;
+	}
+	$safety |= $flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE|
+			     EBX_DATA_XSAFE|EBX_CODE_XSAFE|STACK_TOP_XSAFE|
+			     EBP_DATA_SAFE|ESP_DATA_SAFE);
 	$unsafety |= $flags & (CHANGE_EBP|CHANGE_ESP|BUMP_ESP);
 	$bump_count++ if $flags & BUMP_ESP;
 	$unsafety |= CHANGE_ESP if $bump_count >= 250;
