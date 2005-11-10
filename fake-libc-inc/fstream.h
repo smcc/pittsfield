@@ -25,7 +25,8 @@ class ifstream : public istream {
     }
 
     void close(void) {
-	fclose(fp);
+	if (fp)
+	    fclose(fp);
     }
 };
 
@@ -46,7 +47,8 @@ class ofstream : public ostream {
     }
 
     void close(void) {
-	fclose(fp);
+	if (fp)
+	    fclose(fp);
     }
 };
 

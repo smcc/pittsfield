@@ -43,41 +43,58 @@ private:
 	}
     }
 public:
-    istream() : failed(false) { }
+    istream() : fp(0), failed(false) { }
     FILE *fp;
     bool failed;
     istream& operator>>(char *cp) {
-	fscanf(fp, " %s", cp);
+	if (fscanf(fp, " %s", cp) != 1) {
+	    failed = 1;
+	}
 	return *this;
     }
     istream& operator>>(char& cr) {
 	char c;
-	fscanf(fp, " %c", &c);
-	cr = c;
+	if (fscanf(fp, " %c", &c) != 1) {
+	    failed = 1;
+	} else {
+	    cr = c;
+	}
 	return *this;
     }
     istream& operator>>(unsigned char& cr) {
 	unsigned char c;
-	fscanf(fp, " %c", (char *)&c);
-	cr = c;
+	if (fscanf(fp, " %c", (char *)&c) != 1) {
+	    failed = 1;
+	} else {
+	    cr = c;
+	}
 	return *this;
     }
     istream& operator>>(int& v) {
 	int x;
-	fscanf(fp, " %d", &x);
-	v = x;
+	if (fscanf(fp, " %d", &x) != 1) {
+	    failed = 1;
+	} else {
+	    v = x;
+	}
 	return *this;
     }
     istream& operator>>(float& v) {
 	float f;
-	fscanf(fp, " %f", &f);
-	v = f;
+	if (fscanf(fp, " %f", &f) != 1) {
+	    failed = 1;
+	} else {
+	    v = f;
+	}
 	return *this;
     }
     istream& operator>>(double& v) {
 	double f;
-	fscanf(fp, " %lf", &f);
-	v = f;
+	if (fscanf(fp, " %lf", &f) != 1) {
+	    failed = 1;
+	} else {
+	    v = f;
+	}
 	return *this;
     }
     int eof() const {
@@ -106,7 +123,7 @@ public:
 
 class ostream {
 public:
-    ostream() : failed(false) { }
+    ostream() : fp(0), failed(false) { }
     FILE *fp;
     bool failed;
     int good() const { return !failed; }
