@@ -153,6 +153,8 @@ if ($minus_c and @c_files) {
 	while (<CHECKS>) {
 	    if (/^Checks finished before /) {
 		$okay = $_;
+	    } else {
+		die "Verification failed: $_";
 	    }
 	}
 	close CHECKS;
