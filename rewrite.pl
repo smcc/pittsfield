@@ -441,10 +441,41 @@ sub print_stubs {
     close STUBS;
 }
 
+my @eflags_live_before;
+
+sub eflags_liveness {
+    my($in_file) = @_;
+    my @bits;
+
+    my $live = 0;
+    push @bits, $live;
+
+    open(IN, "-|", "/usr/bin/tac", $in_file);
+    while (<IN>) {
+	if (/^\t(j|set)($cond)\t/) {
+	    $live = 1;
+	} elsif (/^\t(cmp|test|inc|dec|add|sub|and|or|xor|test|s[ah]r|s[ah]l|sahf)/) {
+	    $live = 0;
+	} elsif (/^\t(jmp|call|ret)/) {
+	    $live = 0;
+	}
+	push @bits, $live;
+    }
+    close IN;
+
+    @eflags_live_before = reverse @bits;
+}
+
 my $done_early = 1;
 
+my $in_file = $ARGV[0];
+
+eflags_liveness($in_file);
+
+open(INPUT, "<$in_file");
+
 if ($is_kernel) {
-    print scalar <>;
+    print scalar <INPUT>;
     print qq/\t.section .sandboxed_text, "ax"\n/;
     print "\t.p2align 12\n";
     print ".globl code_sandbox_start\n";
@@ -452,7 +483,7 @@ if ($is_kernel) {
     print "\tjmp return_from_sandbox\n";
     print "\t.p2align $log_chunk_size\n";
 } else {
-    while (<>) {
+    while (<INPUT>) {
 	if (/^\t?\.text/) {
 	    # OK, there's real code in this file
 	    $done_early = 0;
@@ -498,7 +529,7 @@ exit if $done_early;
 
 my($seen_data) = 0;
 
-while (<>) {
+while (<INPUT>) {
     my $comment;
     if ($is_kernel and /\t\.data/ || /\.section \.rodata/) {
 	print qq/\t.section .sandboxed_data, "aw"\n/;
@@ -537,12 +568,10 @@ while (<>) {
     } elsif (/, %esp/) {
 	$dirty_esp = 1;
     }
-    if (/^\t(test|cmp|dec)/) {
-	$precious_eflags = 0; # We kill the old ones
-    }
     if (/^\trep/) {
 	warn "Noticed rep at line $.: string ops not supported";
     }
+    $precious_eflags = $eflags_live_before[$. - 1];
     if (/^\t[a-z]/) {
 	my $len = insn_len($_);
 	if ($this_chunk + $len > $chunk_size) {
@@ -572,11 +601,6 @@ while (<>) {
 	emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
 	emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
 	emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
-    }
-    if (/^\t(test|cmp|dec|and)/) {
-	$precious_eflags = 1;
-    } elsif (/^\tj($cond)\t/ and $1 ne "e") {
-	$precious_eflags = 0;
     }
     #print "# <$.>\n" if ($. % 10) == 0;
 }

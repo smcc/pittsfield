@@ -57,7 +57,8 @@ libcplusplus-no-sfi-base.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 
 
 %.fis:	%.s rewrite.pl rewrite-stringops.pl x86_common.pm sizes.pm stub-list
-	perl rewrite-stringops.pl $*.s | perl rewrite.pl >$*.fis
+	perl rewrite-stringops.pl $*.s >$*-nstr.s
+	perl rewrite.pl $*-nstr.s >$*.fis
 
 %.mo:	%.fis
 	$(AS) $*.fis -o $*.mo
