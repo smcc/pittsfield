@@ -91,6 +91,18 @@ if (defined($minus_o_loc)) {
 my $pad_only = (grep($_ eq "--pad-only", @args) > 0);
 @args = grep($_ ne "--pad-only", @args);
 
+my $no_sfi = "";
+if (grep($_ eq "--no-sfi=base", @args)) {
+    @args = grep($_ ne "--no-sfi=base", @args);
+    $no_sfi = "base";
+}
+
+if ($no_sfi) {
+    my $ext = "-no-sfi-$no_sfi";
+    $libc_mo = "$pittsfield_dir/libc$ext.mo";
+    $libcplusplus_mo = "$pittsfield_dir/libcplusplus$ext.mo";
+}
+
 if ($minus_c and @c_files) {
     # Compile source to object
     die "Can only compile one .c file at once" unless @c_files == 1;
@@ -106,13 +118,19 @@ if ($minus_c and @c_files) {
     if (!$pad_only) {
 	push @args, "-nostdinc", "-I$fake_libc_inc", "--fixed-ebx";
     }
+    my @rewrite_flags = ();
+    if ($pad_only) {
+	@rewrite_flags = ("-padonly");
+    } elsif ($no_sfi eq "base") {
+	@rewrite_flags = ("-no-rodata-only");
+    }
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
     verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
 			  "$temp_file.s", ">$temp_file-nostr.s");
     verbose_redir_command($perl, "-I$pittsfield_dir", $rewrite,
-			  ($pad_only ? "-padonly" : ()),
-			  "$temp_file-nostr.s", ">$temp_file.fis");
+			  @rewrite_flags, "$temp_file-nostr.s",
+			  ">$temp_file.fis");
     verbose_command($as, "$temp_file.fis", "-o", $out_file);
     unlink("$temp_file.s");
     unlink("$temp_file-nostr.s");
@@ -147,20 +165,22 @@ if ($minus_c and @c_files) {
 	}
 
 	verbose_command($ld, "-o", $fio_file, $libc_mo, @ld_args, @args);
-	verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
-	open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
-	my $okay = 0;
-	while (<CHECKS>) {
-	    if (/^Checks finished before /) {
-		$okay = $_;
-	    } else {
-		die "Verification failed: $_";
+	if (!$no_sfi) {
+	    verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
+	    open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
+	    my $okay = 0;
+	    while (<CHECKS>) {
+		if (/^Checks finished before /) {
+		    $okay = $_;
+		} else {
+		    die "Verification failed: $_";
+		}
 	    }
+	    close CHECKS;
+	    die "Verification failed" unless $okay;
+	    print $okay;
+	    unlink($dis_file);
 	}
-	close CHECKS;
-	die "Verification failed" unless $okay;
-	print $okay;
-	unlink($dis_file);
 	verbose_command($real_compiler, "-o", $out_file, "-g",
 			qq/-DLOADER_FIO="$fio_file"/, $loader_c,
 			@loader_flags);

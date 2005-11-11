@@ -44,10 +44,17 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 	$(CXX) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
 
 libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main libc.s >libc.fis
+	perl rewrite.pl -main libc.s >$@
+
+libc-no-sfi-base.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -no-rodata-only libc.s >$@
 
 libc-no-stubs.o:	libc.c libc.h
 	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
+
+libcplusplus-no-sfi-base.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -no-rodata-only libcplusplus.s >$@
+
 
 %.fis:	%.s rewrite.pl rewrite-stringops.pl x86_common.pm sizes.pm stub-list
 	perl rewrite-stringops.pl $*.s | perl rewrite.pl >$*.fis
