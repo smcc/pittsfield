@@ -188,6 +188,104 @@ int outside_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
     return vsnprintf(str, size, format, ap);
 }
 
+int outside_execv(const char *path, char *const argv[]) {
+    return execv(path, argv);
+}
+
+int outside_vfscanf(int fi, const char *fmt, va_list ap) {
+    return vfscanf(outside_files[fi], fmt, ap);
+}
+
+int outside_isatty(int fd) {
+    return isatty(fd);
+}
+
+char *outside_fgets(char *buf, int size, int fi) {
+    return fgets(buf, size, outside_files[fi]);
+}
+
+int outside_chdir(const char *path) {
+    return chdir(path);
+}
+
+int outside_chmod(const char *path, mode_t mode) {
+    return chmod(path, mode);
+}
+
+int outside_dup2(int oldfd, int newfd) {
+    return dup2(oldfd, newfd);
+}
+
+int outside_dup(int oldfd) {
+    return dup(oldfd);
+}
+
+int outside_execvp(const char *file, char *const argv[]) {
+    return execvp(file, argv);
+}
+
+pid_t outside_fork(void) {
+    return fork();
+}
+
+int outside_ftruncate(int fd, off_t length) {
+    return ftruncate(fd, length);
+}
+
+int outside_mkdir(const char *pathname, mode_t mode) {
+    return mkdir(pathname, mode);
+}
+
+int outside_rename(const char *oldpath, const char *newpath) {
+    return rename(oldpath, newpath);
+}
+
+pid_t outside_wait(int *status) {
+    return wait(status);
+}
+
+int outside_pipe(int fds[2]) {
+    return pipe(fds);
+}
+
+int outside_rmdir(const char *path) {
+    return rmdir(path);
+}
+
+int outside_select(int n, fd_set *rfds, fd_set *wfds, fd_set *xfds,
+		   struct timeval *tv) {
+    return select(n, rfds, wfds, xfds, tv);
+}
+
+int outside_lstat(const char *fname, struct stat *buf) {
+    return lstat(fname, buf);
+}
+
+int outside_truncate(const char *path, off_t length) {
+    return truncate(path, length);
+}
+
+int outside_unlink(const char *path) {
+    return unlink(path);
+}
+
+int outside_write(int fd, const void *buf, size_t count) {
+    return write(fd, buf, count);
+}
+
+void outside_clearerr(int fi) {
+    clearerr(outside_files[fi]);
+}
+
+int outside_feof(int fi) {
+    return feof(outside_files[fi]);
+}
+
+void outside_setbuf(int fi, char *buf) {
+    setbuf(outside_files[fi], buf);
+}
+
+
 void init_wrappers() {
     outside_files[0] = stdin;
     outside_files[1] = stdout;

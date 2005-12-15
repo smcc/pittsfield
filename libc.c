@@ -903,6 +903,7 @@ REPLACEMENT const char *gettext(const char *msgid) {
     return msgid;
 }
 
+#ifndef NO_STUBS
 static char *empty_environment[1] = {0};
 char **environ = empty_environment;
 
@@ -925,6 +926,7 @@ int _start(int argc, char **argv) {
     global_constructors();
     return main(argc, argv);
 }
+#endif /* !NO_STUBS */
 
 #ifndef REAL_MALLOC
 
