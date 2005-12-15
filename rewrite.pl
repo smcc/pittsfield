@@ -9,6 +9,7 @@ use sizes;
 my $do_sandbox = 1;
 my $do_no_rodata = 1;
 my $do_align = 1;
+my $nop_only = 0;
 
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
@@ -43,6 +44,9 @@ if (grep($_ eq "-padonly", @ARGV)) {
     $do_no_rodata = 1;
     $do_sandbox = $do_align = 0;
     @ARGV = grep($_ ne "-no-rodata-only", @ARGV);
+} elsif (grep($_ eq "-nop-only", @ARGV)) {
+    $nop_only = 1;
+    @ARGV = grep($_ ne "-nop-only", @ARGV);
 }
 
 my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
@@ -186,6 +190,9 @@ sub align {
 my $dirty_esp = 0;
 my $precious_eflags = 0;
 
+# Heuristic approximation to EFLAGS liveness computed forward
+my $forward_eflags_live = 0;
+
 sub nop_pad {
     my($bytes) = @_;
     if ($bytes == 1) {
@@ -220,10 +227,14 @@ sub nop_pad {
 }
 
 sub emit {
-    my($insn, $len) = @_;
+    my($insn, $len, $can_nop) = @_;
     $this_chunk += $len;
-    print "\t$insn\n";
-    #print "\t$insn # e $this_chunk $len\n";
+    if ($can_nop and $nop_only) {
+	nop_pad($len);
+    } else {
+	print "\t$insn\n";
+	#print "\t$insn # e $this_chunk $len\n";
+    }
     if ($this_chunk > $chunk_size) {
 	warn "Possible chunk overflow";
 	print "\t# XXX\n";
@@ -237,9 +248,9 @@ sub maybe_align_for {
 }
 
 sub a_emit {
-    my($insn, $len) = @_;
+    my($insn, $len, $can_nop) = @_;
     maybe_align_for($len);
-    emit($insn, $len);
+    emit($insn, $len, $can_nop);
 }
 
 my $label_count = 0;
@@ -247,9 +258,9 @@ my $TEST_LEN = 9;
 
 sub emit_test {
     my($reg, $anti_mask) = @_;
-    emit("testl\t$anti_mask, $reg", 6 + ($reg eq "(%esp)"));
-    emit("jz .LL$label_count", 2);
-    emit("int3", 1);
+    emit("testl\t$anti_mask, $reg", 6 + ($reg eq "(%esp)"), 1);
+    emit("jz .LL$label_count", 2, 1);
+    emit("int3", 1, 1);
     print ".LL$label_count:\n";
     $label_count++;
 }
@@ -275,18 +286,18 @@ sub maybe_rewrite {
 	} elsif ($to =~ /^\((%e[sb]p)\)$/) {
 	    return 0;
 	}
-	a_emit("pushf", 1) if $precious_eflags;
+	a_emit("pushf", 1, 1) if $precious_eflags;
 	my $size = "l";
 	$size = $1 if $op =~ /([bwl])$/;
-	a_emit("leal\t$to, %ebx", 7);
+	a_emit("leal\t$to, %ebx", 7, 0);
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST + 
 			$precious_eflags + 6);
-	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
-	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
-	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
-	emit("popf", 1) if $precious_eflags and $DO_TEST;
-	emit("$op\t$from, (%ebx)", 6);
-	emit("popf", 1) if $precious_eflags and !$DO_TEST;
+	emit("andl\t$DATA_MASK, %ebx", 6, 1) if $DO_AND;
+	emit("orl\t$DATA_START, %ebx", 6, 1) if $DO_OR;
+	emit_test("%ebx", $DATA_ANTI_MASK, 1) if $DO_TEST;
+	emit("popf", 1, 1) if $precious_eflags and $DO_TEST;
+	emit("$op\t$from, (%ebx)", 6, 0);
+	emit("popf", 1, 1) if $precious_eflags and !$DO_TEST;
 	return 1;
     } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
 	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore|$fcstore/) {
@@ -303,17 +314,17 @@ sub maybe_rewrite {
 	    return 0;
 	}
 	my $early_popf = ($DO_TEST || $op =~ /^set$cond$/);
-	a_emit("pushf", 1) if $precious_eflags;
-	a_emit("leal\t$target, %ebx", 6);
+	a_emit("pushf", 1, 1) if $precious_eflags;
+	a_emit("leal\t$target, %ebx", 6, 0);
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST +
 			$precious_eflags + 3);
-	emit("andl\t$DATA_MASK, %ebx", 6) if $DO_AND;
-	emit("orl\t$DATA_START, %ebx", 6) if $DO_OR;
-	emit_test("%ebx", $DATA_ANTI_MASK) if $DO_TEST;
-	emit("popf", 1) if $precious_eflags and $early_popf;
-	emit("$op\t(%ebx)", 3);
+	emit("andl\t$DATA_MASK, %ebx", 6, 1) if $DO_AND;
+	emit("orl\t$DATA_START, %ebx", 6, 1) if $DO_OR;
+	emit_test("%ebx", $DATA_ANTI_MASK, 1) if $DO_TEST;
+	emit("popf", 1, 1) if $precious_eflags and $early_popf;
+	emit("$op\t(%ebx)", 3, 0);
 	# XXX When is it the right thing to popf after the OP?
-	emit("popf", 1) if $precious_eflags and !$early_popf;
+	emit("popf", 1, 1) if $precious_eflags and !$early_popf;
 	return 1;
     } elsif ($args =~ /^($immed|$reg), ($lword)$/) {
 	warn "Skipping bogus direct write $op $args";
@@ -325,10 +336,10 @@ sub maybe_rewrite {
 	$dirty_esp = 0;
 	maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
 			+ (length($args) ? 3 : 1));
-	emit("andl\t$JUMP_MASK, (%esp)", 7) if $DO_AND;
-	emit("orl\t$CODE_START, (%esp)", 7) if $DO_OR;
-	emit_test("(%esp)", $JUMP_ANTI_MASK) if $DO_TEST;
-	emit("ret $args", (length($args) ? 3 : 1));
+	emit("andl\t$JUMP_MASK, (%esp)", 7, 1) if $DO_AND;
+	emit("orl\t$CODE_START, (%esp)", 7, 1) if $DO_OR;
+	emit_test("(%esp)", $JUMP_ANTI_MASK, 1) if $DO_TEST;
+	emit("ret $args", (length($args) ? 3 : 1), 0);
 	# The old, slow way:
  	#maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
  	#		+ 3);
@@ -341,6 +352,7 @@ sub maybe_rewrite {
 	return 1;
     } elsif ($op eq "call") {
 	my $real_call = "";
+	my $sandbox_len = 0;
 	my $call_len;
 	return 0 if !$do_sandbox and !$do_align;
 	if ($args =~ /^\.?\w+$/) {
@@ -350,9 +362,13 @@ sub maybe_rewrite {
 	    my $target = $1;
 	    if (!$do_sandbox) {
 		$real_call = $line;
-		$call_len = 4; # bogus
+		if ($args =~ /\*$eb_off$/) {
+		    $call_len = 3;
+		} else {
+		    $call_len = 4; # bogus
+		}
 	    } else {
-		a_emit("movl\t$target, %ebx", 6);
+		a_emit("movl\t$target, %ebx", 6, 0);
 		$real_call .= "\tandl\t$JUMP_MASK, %ebx\n"
 		  if $DO_AND;
 		$real_call .= "\torl\t$CODE_START, %ebx\n"
@@ -364,8 +380,13 @@ sub maybe_rewrite {
 		    $real_call .= ".LL$label_count:\n";
 		    $label_count++;
 		}
+		$sandbox_len = 6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST;
+		if ($nop_only) {
+		    # Will emit equivalent # of nops below
+		    $real_call = "";
+		}
 		$real_call .= "\tcall\t*%ebx\n";
-		$call_len = 2 + (6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+		$call_len = $sandbox_len + 2;
 	    }
 	} else {
 	    die "Strange call $args";
@@ -376,21 +397,24 @@ sub maybe_rewrite {
 		# It will all fit in one chunk
 		align();
 		nop_pad($chunk_size - $sb_size - $call_len);
-		emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
-		emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
-		emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+		emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
+		emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
+		emit_test("%esp", $DATA_ANTI_MASK, 1) if $DO_TEST;
 	    } else {
 		# Need two separate chunks
 		maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
-		emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
-		emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
-		emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+		emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
+		emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
+		emit_test("%esp", $DATA_ANTI_MASK, 1) if $DO_TEST;
 		align();
 		nop_pad($chunk_size - $call_len);
 	    }
 	} else {
 	    align();
 	    nop_pad($chunk_size - $call_len);
+	}
+	if ($nop_only) {
+	    nop_pad($sandbox_len);
 	}
 	print "$real_call\n";
 	$this_chunk = 0;
@@ -399,18 +423,18 @@ sub maybe_rewrite {
     } elsif ($do_sandbox and $op eq "jmp") {
 	if ($args =~ /^\*($lab_complex)$/) {
 	    my $target = $1;
-	    a_emit("movl\t$target, %ebx", 7);
+	    a_emit("movl\t$target, %ebx", 7, 0);
 	} elsif ($args =~ /^\*($reg)$/) {
 	    my $target = $1;
-	    a_emit("\tmovl\t$target, %ebx", 7);
+	    a_emit("\tmovl\t$target, %ebx", 7, 0);
 	} else {
 	    return 0;
 	}
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST + 2);
-	emit("andl\t$JUMP_MASK, %ebx", 6) if $DO_AND;
-	emit("orl\t$CODE_START, %ebx", 6) if $DO_OR;
-	emit_test("%ebx", $JUMP_ANTI_MASK) if $DO_TEST;
-	emit("jmp\t*%ebx", 2);
+	emit("andl\t$JUMP_MASK, %ebx", 6, 1) if $DO_AND;
+	emit("orl\t$CODE_START, %ebx", 6, 1) if $DO_OR;
+	emit_test("%ebx", $JUMP_ANTI_MASK, 1) if $DO_TEST;
+	emit("jmp\t*%ebx", 2, 0);
 	return 1;	
     } else {
 	return 0;
@@ -557,9 +581,9 @@ while (<INPUT>) {
 	and /^\t(jmp|cmp|inc|dec|add|sub|and|or|xor|test|s[ah]r|s[ah]l|sahf)/) {
 	if ($do_sandbox) {
 	    maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
-	    emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
-	    emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
-	    emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+	    emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
+	    emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
+	    emit_test("%esp", $DATA_ANTI_MASK, 1) if $DO_TEST;
 	}
 	$dirty_esp = 0;
     }
@@ -568,10 +592,13 @@ while (<INPUT>) {
     } elsif (/, %esp/) {
 	$dirty_esp = 1;
     }
+    if (/^\t(test|cmp|dec)/) {
+	$forward_eflags_live = 0; # We kill the old ones
+    }
     if (/^\trep/) {
 	warn "Noticed rep at line $.: string ops not supported";
     }
-    $precious_eflags = $eflags_live_before[$. - 1];
+    $precious_eflags = ($forward_eflags_live || $eflags_live_before[$. - 1]);
     if (/^\t[a-z]/) {
 	my $len = insn_len($_);
 	if ($this_chunk + $len > $chunk_size) {
@@ -579,7 +606,8 @@ while (<INPUT>) {
 	}
 	next if maybe_rewrite($_);
 	$this_chunk += $len;
-	$comment = "# " . ($dirty_esp?"d":"") . ($precious_eflags?"f":"");
+	$comment = "# " . ($dirty_esp?"d":"") . ($forward_eflags_live?"f":"") .
+	  ($eflags_live_before[$.-1]?"F":"");
     } elsif (/^\t\.p2align 2/) {
 	$this_chunk += 4;
     } elsif (/^($label|\w+):$/) {
@@ -590,17 +618,22 @@ while (<INPUT>) {
     #print "$_\n";
     if ($do_sandbox and /\t(leave|popl\s+%ebp)$/
 	|| (/, %ebp/ and !/\tmovl\t%esp, %ebp$/)) {
-	a_emit("pushf", 1) if $precious_eflags;
+	a_emit("pushf", 1, 1) if $precious_eflags;
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
-	emit("andl\t$DATA_MASK, %ebp", 6) if $DO_AND;
-	emit("orl\t$DATA_START, %ebp", 6) if $DO_OR;
-	emit_test("%ebp", $DATA_ANTI_MASK) if $DO_TEST;
-	a_emit("popf", 1) if $precious_eflags;
+	emit("andl\t$DATA_MASK, %ebp", 6, 1) if $DO_AND;
+	emit("orl\t$DATA_START, %ebp", 6, 1) if $DO_OR;
+	emit_test("%ebp", $DATA_ANTI_MASK, 1) if $DO_TEST;
+	a_emit("popf", 1, 1) if $precious_eflags;
     } elsif ($do_sandbox and /^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/) {
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
-	emit("andl\t$DATA_MASK, %esp", 6) if $DO_AND;
-	emit("orl\t$DATA_START, %esp", 6) if $DO_OR;
-	emit_test("%esp", $DATA_ANTI_MASK) if $DO_TEST;
+	emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
+	emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
+	emit_test("%esp", $DATA_ANTI_MASK, 1) if $DO_TEST;
+    }
+    if (/^\t(test|cmp)/) {
+	$forward_eflags_live = 1;
+    } elsif (/^\t(j$cond|jmp|call|ret)\t/) {
+	$forward_eflags_live = 0;
     }
     #print "# <$.>\n" if ($. % 10) == 0;
 }

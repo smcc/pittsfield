@@ -46,6 +46,9 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main libc.s >$@
 
+libc-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -nop-only libc.s >$@
+
 libc-no-sfi-base.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -no-rodata-only libc.s >$@
 
@@ -55,10 +58,14 @@ libc-no-stubs.o:	libc.c libc.h
 libcplusplus-no-sfi-base.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 	perl rewrite.pl -no-rodata-only libcplusplus.s >$@
 
-
-%.fis:	%.s rewrite.pl rewrite-stringops.pl x86_common.pm sizes.pm stub-list
+%-nstr.s: %.s rewrite-stringops.pl
 	perl rewrite-stringops.pl $*.s >$*-nstr.s
+
+%.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl $*-nstr.s >$*.fis
+
+%-noop.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -nop-only $*-nstr.s >$*-noop.fis
 
 %.mo:	%.fis
 	$(AS) $*.fis -o $*.mo
@@ -71,6 +78,9 @@ crtend.o: crtend.S
 
 %-cpp-mod.fio:	%-cpp-mod.mo libc.mo crtbegin.o crtend.o libcplusplus.mo link-c++.x
 	ld $(SECTION) -T link-c++.x crtbegin.o libc.mo libcplusplus.mo $*-cpp-mod.mo crtend.o -o $*-cpp-mod.fio
+
+%-noop.fio:	%-noop.mo libc-noop.mo
+	ld $(SECTION) libc-noop.mo $*-noop.mo -o $*-noop.fio
 
 %.fio:	%.mo libc.mo
 	ld $(SECTION) libc.mo $*.mo -o $*.fio
@@ -108,11 +118,12 @@ crtend.o: crtend.S
 %-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
 	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm
 
-%.out:	%.fio %-raw %-noebx %-pad %-pad-noebx loader
+%.out:	%.fio %-noop.fio %-raw %-noebx %-pad %-pad-noebx loader
 	-/usr/bin/time -f '%e %U %S' -o $*.out ./$*-raw 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-noebx 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad 
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad-noebx 
+	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./loader $*-noop.fio
 	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./loader $*.fio
 
 dist:
