@@ -28,8 +28,14 @@ sizes.h: sizes.pm
 %.s:	%.c libc.h stub-list sizes.h
 	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
 
+%-ebx.s:	%.c libc.h stub-list sizes.h
+	$(CC) -Wall -S $(DEBUG) $(OPT) $*.c -o $@
+
 %.s:	%.cc libc.h stub-list sizes.h
 	$(CXX) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.cc
+
+%-ebx.s:	%.cc libc.h stub-list sizes.h
+	$(CXX) -Wall -S $(DEBUG) $(OPT) $*.cc -o $@
 
 gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx gcc-mod-fewer-lines.c -o $@
@@ -49,26 +55,56 @@ libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 libc-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -nop-only libc.s >$@
 
-libc-no-sfi-base.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+libc-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -pushf-and-nop libc.s >$@
+
+libc-no-sfi-base.fis:	libc-ebx.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -no-rodata-only libc-ebx.s >$@
+
+libc-no-sfi-noebx.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -no-rodata-only libc.s >$@
+
+libc-no-sfi-pad.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -no-sand libc.s >$@
+
+libc-no-sfi-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -nop-only libc.s >$@
+
+libc-no-sfi-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -pushf-and-nop libc.s >$@
 
 libc-no-stubs.o:	libc.c libc.h
 	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
 
-libcplusplus-no-sfi-base.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+libcplusplus-no-sfi-base.fis:	libcplusplus-ebx.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -no-rodata-only libcplusplus-ebx.s >$@
+
+libcplusplus-no-sfi-noebx.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 	perl rewrite.pl -no-rodata-only libcplusplus.s >$@
 
+libcplusplus-no-sfi-pad.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -no-sand libcplusplus.s >$@
+
+libcplusplus-no-sfi-noop.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -nop-only libcplusplus.s >$@
+
+libcplusplus-no-sfi-pushf.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -pushf-and-nop libcplusplus.s >$@
+
 %-nstr.s: %.s rewrite-stringops.pl
-	perl rewrite-stringops.pl $*.s >$*-nstr.s
+	perl rewrite-stringops.pl $*.s >$@
 
 %.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl $*-nstr.s >$*.fis
+	perl rewrite.pl $*-nstr.s >$@
 
 %-noop.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -nop-only $*-nstr.s >$*-noop.fis
+	perl rewrite.pl -nop-only $*-nstr.s >$@
+
+%-pushf.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -pushf-and-nop $*-nstr.s >$@
 
 %.mo:	%.fis
-	$(AS) $*.fis -o $*.mo
+	$(AS) $*.fis -o $@
 
 crtbegin.o: crtbegin.S
 	$(AS) crtbegin.S -o crtbegin.o
@@ -80,10 +116,13 @@ crtend.o: crtend.S
 	ld $(SECTION) -T link-c++.x crtbegin.o libc.mo libcplusplus.mo $*-cpp-mod.mo crtend.o -o $*-cpp-mod.fio
 
 %-noop.fio:	%-noop.mo libc-noop.mo
-	ld $(SECTION) libc-noop.mo $*-noop.mo -o $*-noop.fio
+	ld $(SECTION) libc-noop.mo $*-noop.mo -o $@
+
+%-pushf.fio:	%-pushf.mo libc-pushf.mo
+	ld $(SECTION) libc-pushf.mo $*-pushf.mo -o $@
 
 %.fio:	%.mo libc.mo
-	ld $(SECTION) libc.mo $*.mo -o $*.fio
+	ld $(SECTION) libc.mo $*.mo -o $@
 
 %.check: %.fio verify.pl x86_common.pm sizes.pm
 	objdump -d $*.fio | perl verify.pl 2>&1 | tee $*.check
@@ -118,13 +157,14 @@ crtend.o: crtend.S
 %-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
 	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm
 
-%.out:	%.fio %-noop.fio %-raw %-noebx %-pad %-pad-noebx loader
-	-/usr/bin/time -f '%e %U %S' -o $*.out ./$*-raw 
-	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-noebx 
-	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad 
-	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./$*-pad-noebx 
-	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./loader $*-noop.fio
-	-/usr/bin/time -f '%e %U %S' -a -o $*.out ./loader $*.fio
+%.out:	%.fio %-noop.fio %-pushf.fio %-raw %-noebx %-pad %-pad-noebx loader
+	-/usr/bin/time -f '%e %U %S'    -o $@ ./$*-raw 
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-noebx 
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-pad 
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-pad-noebx 
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*-noop.fio
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*-pushf.fio
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*.fio
 
 dist:
 	rm -rf pittsfield-$(VERSION)

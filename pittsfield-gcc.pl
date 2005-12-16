@@ -92,9 +92,11 @@ my $pad_only = (grep($_ eq "--pad-only", @args) > 0);
 @args = grep($_ ne "--pad-only", @args);
 
 my $no_sfi = "";
-if (grep($_ eq "--no-sfi=base", @args)) {
-    @args = grep($_ ne "--no-sfi=base", @args);
-    $no_sfi = "base";
+for my $kind ("base", "noebx", "pad", "noop", "pushf") {
+    if (grep($_ eq "--no-sfi=$kind", @args)) {
+	@args = grep($_ ne "--no-sfi=$kind", @args);
+	$no_sfi = $kind;
+    }
 }
 
 if ($no_sfi) {
@@ -116,13 +118,20 @@ if ($minus_c and @c_files) {
     $basename =~ s/\..*$//;
     my $temp_file = "$temp_dir/sfigcc-$basename$$";
     if (!$pad_only) {
-	push @args, "-nostdinc", "-I$fake_libc_inc", "--fixed-ebx";
+	push @args, "-nostdinc", "-I$fake_libc_inc";
+	push @args, "--fixed-ebx" unless $no_sfi eq "base";
     }
     my @rewrite_flags = ();
     if ($pad_only) {
 	@rewrite_flags = ("-padonly");
-    } elsif ($no_sfi eq "base") {
+    } elsif ($no_sfi eq "base" or $no_sfi eq "noebx") {
 	@rewrite_flags = ("-no-rodata-only");
+    } elsif ($no_sfi eq "pad") {
+	@rewrite_flags = ("-no-sand");
+    } elsif ($no_sfi eq "noop") {
+	@rewrite_flags = ("-nop-only");
+    } elsif ($no_sfi eq "pushf") {
+	@rewrite_flags = ("-pushf-and-nop");
     }
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);

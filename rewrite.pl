@@ -10,6 +10,7 @@ my $do_sandbox = 1;
 my $do_no_rodata = 1;
 my $do_align = 1;
 my $nop_only = 0;
+my $pushf_and_nop = 0;
 
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
@@ -47,6 +48,10 @@ if (grep($_ eq "-padonly", @ARGV)) {
 } elsif (grep($_ eq "-nop-only", @ARGV)) {
     $nop_only = 1;
     @ARGV = grep($_ ne "-nop-only", @ARGV);
+} elsif (grep($_ eq "-pushf-and-nop", @ARGV)) {
+    $nop_only = 1;
+    $pushf_and_nop = 1;
+    @ARGV = grep($_ ne "-pushf-and-nop", @ARGV);
 }
 
 my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
@@ -229,7 +234,8 @@ sub nop_pad {
 sub emit {
     my($insn, $len, $can_nop) = @_;
     $this_chunk += $len;
-    if ($can_nop and $nop_only) {
+    if ($nop_only and $can_nop and
+	!($pushf_and_nop && $insn =~ /^(push|pop)f/)) {
 	nop_pad($len);
     } else {
 	print "\t$insn\n";
