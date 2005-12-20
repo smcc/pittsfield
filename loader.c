@@ -24,6 +24,8 @@
 
 #include "sizes.h"
 
+#include "libdis.h"
+
 #define CODE_END CODE_START + CODE_SIZE
 #define DATA_END DATA_START + DATA_SIZE
 
@@ -614,6 +616,49 @@ void install_stubs() {
     }
 }
 
+void fail_verify(const char *msg, int offset) {
+    printf("Verification failed: %s at offset 0x%08x\n", msg, offset);
+    exit(1);
+}
+
+void fail_verify_int(const char *msg, int arg, int offset) {
+    printf("Verification failed: %s (%d) at offset 0x%08x\n",
+	   msg, arg, offset);
+    exit(1);
+}
+
+void verify(int code_len) {
+    int offset = 0;
+    offset = 0x9060;
+    x86_init(opt_none, 0);
+    while (offset < code_len) {
+	x86_insn_t insn;
+	int len;
+	len = x86_disasm((unsigned char *)CODE_START, code_len,
+			 (unsigned long)CODE_START, offset, &insn);
+	if (len <= 0) {
+	    fail_verify("Illegal instruction", offset);
+	}
+	switch (insn.group) {
+	case insn_controlflow:
+	case insn_arithmetic:
+	case insn_logic:
+	case insn_stack:
+	case insn_comparison:
+	case insn_move:
+	case insn_fpu:
+	case insn_interrupt:
+	case insn_other:
+	    break;
+	default:
+	    fail_verify_int("Illegal insn group", insn.group, offset);
+	}
+	offset += len;
+    }
+    printf("Verification finished at 0x%08x\n", CODE_START + offset);
+    x86_cleanup();
+}
+
 int main(int argc, char **argv) {
     Elf *elf;
     Elf32_Ehdr *ehdr;
@@ -741,6 +786,7 @@ int main(int argc, char **argv) {
     close(fd);
     init_wrappers();
     install_stubs();
+    verify(code_len);
     data_break = (void *)(DATA_START + data_size);
     inside_ebp = inside_esp = (unsigned)DATA_END - 4;
     ret = call_in((void*)CODE_START, argc, argv);

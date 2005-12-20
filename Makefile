@@ -13,7 +13,7 @@ TFF:=./topformflat
 .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
 loader:	loader.c wrappers.h sizes.h high-link.x
-	$(CC) -Wall -g -static loader.c -lelf -lm -Wl,-T -Wl,high-link.x -o loader
+	$(CC) -Wall -g -static loader.c libdisasm.a -lelf -lm -Wl,-T -Wl,high-link.x -o loader
 	@#$(CC) -Wall -g loader.c -lelf -lm -o loader
 
 wrappers.h: gen-stubs
