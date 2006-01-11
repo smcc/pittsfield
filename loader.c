@@ -24,7 +24,9 @@
 
 #include "sizes.h"
 
+#ifdef VERIFY
 #include "libdis.h"
+#endif
 
 #define CODE_END CODE_START + CODE_SIZE
 #define DATA_END DATA_START + DATA_SIZE
@@ -616,6 +618,7 @@ void install_stubs() {
     }
 }
 
+#ifdef VERIFY
 void fail_verify(const char *msg, int offset) {
     printf("Verification failed: %s at offset 0x%08x\n", msg, offset);
     exit(1);
@@ -658,6 +661,7 @@ void verify(int code_len) {
     printf("Verification finished at 0x%08x\n", CODE_START + offset);
     x86_cleanup();
 }
+#endif
 
 int main(int argc, char **argv) {
     Elf *elf;
@@ -786,7 +790,9 @@ int main(int argc, char **argv) {
     close(fd);
     init_wrappers();
     install_stubs();
+#ifdef VERIFY
     verify(code_len);
+#endif
     data_break = (void *)(DATA_START + data_size);
     inside_ebp = inside_esp = (unsigned)DATA_END - 4;
     ret = call_in((void*)CODE_START, argc, argv);
