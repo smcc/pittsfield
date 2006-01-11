@@ -92,7 +92,7 @@ my $pad_only = (grep($_ eq "--pad-only", @args) > 0);
 @args = grep($_ ne "--pad-only", @args);
 
 my $no_sfi = "";
-for my $kind ("base", "noebx", "pad", "noop", "pushf") {
+for my $kind ("base", "noschd", "noebx", "pad", "noop", "pushf") {
     if (grep($_ eq "--no-sfi=$kind", @args)) {
 	@args = grep($_ ne "--no-sfi=$kind", @args);
 	$no_sfi = $kind;
@@ -119,12 +119,14 @@ if ($minus_c and @c_files) {
     my $temp_file = "$temp_dir/sfigcc-$basename$$";
     if (!$pad_only) {
 	push @args, "-nostdinc", "-I$fake_libc_inc";
-	push @args, "--fixed-ebx" unless $no_sfi eq "base";
+	push @args, "-fno-schedule-insns2" unless $no_sfi eq "base";
+	push @args, "--fixed-ebx"
+	  unless $no_sfi eq "base" or $no_sfi eq "noschd";
     }
     my @rewrite_flags = ();
     if ($pad_only) {
 	@rewrite_flags = ("-padonly");
-    } elsif ($no_sfi eq "base" or $no_sfi eq "noebx") {
+    } elsif ($no_sfi eq "base" or $no_sfi eq "noschd" or $no_sfi eq "noebx") {
 	@rewrite_flags = ("-no-rodata-only");
     } elsif ($no_sfi eq "pad") {
 	@rewrite_flags = ("-no-sand");

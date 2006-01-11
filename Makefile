@@ -9,11 +9,13 @@ CC:=gcc
 CXX:=g++ -fno-exceptions -fno-rtti
 AS:=as
 TFF:=./topformflat
+NO_EBX := --fixed-ebx
+NO_SCHD := -fno-schedule-insns2
 
 .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
 loader:	loader.c wrappers.h sizes.h high-link.x
-	$(CC) -Wall -g -static loader.c libdisasm.a -lelf -lm -Wl,-T -Wl,high-link.x -o loader
+	$(CC) -Wall -DVERIFY -g -static loader.c libdisasm.a -lelf -lm -Wl,-T -Wl,high-link.x -o loader
 	@#$(CC) -Wall -g loader.c -lelf -lm -o loader
 
 wrappers.h: gen-stubs
@@ -26,19 +28,25 @@ sizes.h: sizes.pm
 	perl -Msizes -e 'sizes::write_header' >sizes.h
 
 %.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.c
+	$(CC) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $(NO_EBX) $*.c
 
 %-ebx.s:	%.c libc.h stub-list sizes.h
+	$(CC) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $*.c -o $@
+
+%-ebx-schd.s:	%.c libc.h stub-list sizes.h
 	$(CC) -Wall -S $(DEBUG) $(OPT) $*.c -o $@
 
 %.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) -Wall -S $(DEBUG) $(OPT) --fixed-ebx $*.cc
+	$(CXX) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $(NO_EBX) $*.cc
 
 %-ebx.s:	%.cc libc.h stub-list sizes.h
+	$(CXX) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $*.cc -o $@
+
+%-ebx-schd.s:	%.cc libc.h stub-list sizes.h
 	$(CXX) -Wall -S $(DEBUG) $(OPT) $*.cc -o $@
 
 gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(DEBUG) $(OPT) --fixed-ebx gcc-mod-fewer-lines.c -o $@
+	$(CC) -Wall -S $(DEBUG) $(OPT) $(NO_EBX) gcc-mod-fewer-lines.c -o $@
 
 %-fewer-lines.c:	%.c sizes.h libc.c libc.h stubs.h
 	$(CC) -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-fewer-lines.c
@@ -49,6 +57,8 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 %-no-stubs.cc:	%.cc libc.h
 	$(CXX) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
 
+# libc{,plusplus}{,-{noop,pushf,no-sfi-{base,noschd,noebx,pad,noop,pushf}}}.mo
+
 libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main libc.s >$@
 
@@ -58,7 +68,10 @@ libc-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 libc-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -pushf-and-nop libc.s >$@
 
-libc-no-sfi-base.fis:	libc-ebx.s rewrite.pl x86_common.pm sizes.pm stub-list
+libc-no-sfi-base.fis:	libc-ebx-schd.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -no-rodata-only libc-ebx-schd.s >$@
+
+libc-no-sfi-noschd.fis:	libc-ebx.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -no-rodata-only libc-ebx.s >$@
 
 libc-no-sfi-noebx.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
@@ -76,7 +89,10 @@ libc-no-sfi-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 libc-no-stubs.o:	libc.c libc.h
 	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
 
-libcplusplus-no-sfi-base.fis:	libcplusplus-ebx.s rewrite.pl x86_common.pm sizes.pm
+libcplusplus-no-sfi-base.fis:	libcplusplus-ebx-schd.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -no-rodata-only libcplusplus-ebx-schd.s >$@
+
+libcplusplus-no-sfi-noschd.fis:	libcplusplus-ebx.s rewrite.pl x86_common.pm sizes.pm
 	perl rewrite.pl -no-rodata-only libcplusplus-ebx.s >$@
 
 libcplusplus-no-sfi-noebx.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
@@ -134,10 +150,10 @@ crtend.o: crtend.S
 	$(CXX) $(OPT) -S $*-no-stubs.cc -o $*-no-stubs-ebx.s
 
 %-no-ebx.s:	%-no-stubs.c 
-	$(CC) $(OPT) -S --fixed-ebx $*-no-stubs.c -o $*-no-ebx.s
+	$(CC) $(OPT) -S $(NO_EBX) $*-no-stubs.c -o $*-no-ebx.s
 
 %-no-ebx.s:	%-no-stubs.cc 
-	$(CXX) $(OPT) -S --fixed-ebx $*-no-stubs.cc -o $*-no-ebx.s
+	$(CXX) $(OPT) -S $(NO_EBX) $*-no-stubs.cc -o $*-no-ebx.s
 
 %-raw:	%-no-stubs-ebx.s libc-no-stubs.o outside.c
 	$(CC) $(OPT) $*-no-stubs-ebx.s libc-no-stubs.o outside.c -o $*-raw -lm
