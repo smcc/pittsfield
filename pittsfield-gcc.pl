@@ -99,8 +99,13 @@ for my $kind ("base", "noschd", "noebx", "pad", "noop", "pushf") {
     }
 }
 
-if ($no_sfi) {
-    my $ext = "-no-sfi-$no_sfi";
+my $jump_only = (grep($_ eq "--jump-only", @args) > 0);
+@args = grep($_ ne "--jump-only", @args);
+
+if ($no_sfi or $jump_only) {
+    my $ext = "";
+    $ext .= "-no-sfi-$no_sfi" if $no_sfi;
+    $ext .= "-jo" if $jump_only;
     $libc_mo = "$pittsfield_dir/libc$ext.mo";
     $libcplusplus_mo = "$pittsfield_dir/libcplusplus$ext.mo";
 }
@@ -134,6 +139,9 @@ if ($minus_c and @c_files) {
 	@rewrite_flags = ("-nop-only");
     } elsif ($no_sfi eq "pushf") {
 	@rewrite_flags = ("-pushf-and-nop");
+    }
+    if ($jump_only) {
+	push @rewrite_flags, "-jump-only";
     }
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
@@ -176,7 +184,7 @@ if ($minus_c and @c_files) {
 	}
 
 	verbose_command($ld, "-o", $fio_file, $libc_mo, @ld_args, @args);
-	if (!$no_sfi) {
+	if (!$no_sfi and !$jump_only) {
 	    verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
 	    open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
 	    my $okay = 0;

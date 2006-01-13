@@ -58,6 +58,14 @@ my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");
 my $DO_OR = $do_sandbox && ($style eq "andor");
 my $DO_TEST = $do_sandbox && ($style eq "test");
 
+my($jump_sandbox, $data_sandbox);
+if (grep($_ eq "-jump-only", @ARGV)) {
+    ($jump_sandbox, $data_sandbox) = ($do_sandbox, 0);
+    @ARGV = grep($_ ne "-jump-only", @ARGV);
+} else {
+    ($jump_sandbox, $data_sandbox) = ($do_sandbox, $do_sandbox);
+}
+
 sub insn_len {
     my($line) = @_;
     if ($line =~ /^\t(inc|dec|pop|push)l\t$ereg$/o) {
@@ -276,7 +284,7 @@ sub maybe_rewrite {
     chomp $line;
     return 0 unless $line =~ /^\t([a-z]+)(\t(.*))?/;
     my($op, $args) = ($1, $3);
-    if ($do_sandbox and $args =~ /^($immed|$reg), ($lab_complex)$/ and
+    if ($data_sandbox and $args =~ /^($immed|$reg), ($lab_complex)$/ and
 	$op !~ /^(test|cmp)[bwl]?$/) {
 	my($from, $to) = ($1, $2);
 	return 0 if $op =~ /^lea[blw]$/;
@@ -305,7 +313,7 @@ sub maybe_rewrite {
 	emit("$op\t$from, (%ebx)", 6, 0);
 	emit("popf", 1, 1) if $precious_eflags and !$DO_TEST;
 	return 1;
-    } elsif ($do_sandbox and $args =~ /^$lab_complex$/ and $op =~
+    } elsif ($data_sandbox and $args =~ /^$lab_complex$/ and $op =~
 	     /^(inc|dec|i?div|i?mul|$shift|neg|not)[bwl]|set$cond|$fstore|$fcstore/) {
 	my $target = $args;
 	return 0 if $op =~ /^lea[blw]$/;
@@ -338,7 +346,7 @@ sub maybe_rewrite {
     } elsif ($args =~ /^($lword), ($reg)$/) {
 	warn "Skipping bogus direct read $op $args";
 	return 1;
-    } elsif ($do_sandbox and $op eq "ret") {
+    } elsif ($jump_sandbox and $op eq "ret") {
 	$dirty_esp = 0;
 	maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
 			+ (length($args) ? 3 : 1));
@@ -360,13 +368,13 @@ sub maybe_rewrite {
 	my $real_call = "";
 	my $sandbox_len = 0;
 	my $call_len;
-	return 0 if !$do_sandbox and !$do_align;
+	return 0 if !$jump_sandbox and !$do_align;
 	if ($args =~ /^\.?\w+$/) {
 	    $real_call = $line;
 	    $call_len = 5;
 	} elsif ($args =~ /^\*($lab_complex|$reg|$any_const)$/) {
 	    my $target = $1;
-	    if (!$do_sandbox) {
+	    if (!$jump_sandbox) {
 		$real_call = $line;
 		if ($args =~ /\*$eb_off$/) {
 		    $call_len = 3;
@@ -426,7 +434,7 @@ sub maybe_rewrite {
 	$this_chunk = 0;
 	$dirty_esp = 0;
 	return 1;
-    } elsif ($do_sandbox and $op eq "jmp") {
+    } elsif ($jump_sandbox and $op eq "jmp") {
 	if ($args =~ /^\*($lab_complex)$/) {
 	    my $target = $1;
 	    a_emit("movl\t$target, %ebx", 7, 0);
@@ -585,7 +593,7 @@ while (<INPUT>) {
     }
     if ($dirty_esp
 	and /^\t(jmp|cmp|inc|dec|add|sub|and|or|xor|test|s[ah]r|s[ah]l|sahf)/) {
-	if ($do_sandbox) {
+	if ($data_sandbox) {
 	    maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	    emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
 	    emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
@@ -622,7 +630,7 @@ while (<INPUT>) {
     chomp;
     print "$_ $comment\n";
     #print "$_\n";
-    if ($do_sandbox and /\t(leave|popl\s+%ebp)$/
+    if ($data_sandbox and /\t(leave|popl\s+%ebp)$/
 	|| (/, %ebp/ and !/\tmovl\t%esp, %ebp$/)) {
 	a_emit("pushf", 1, 1) if $precious_eflags;
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
@@ -630,7 +638,7 @@ while (<INPUT>) {
 	emit("orl\t$DATA_START, %ebp", 6, 1) if $DO_OR;
 	emit_test("%ebp", $DATA_ANTI_MASK, 1) if $DO_TEST;
 	a_emit("popf", 1, 1) if $precious_eflags;
-    } elsif ($do_sandbox and /^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/) {
+    } elsif ($data_sandbox and /^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/) {
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
 	emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;

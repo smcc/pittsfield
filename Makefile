@@ -68,6 +68,9 @@ libc-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 libc-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -pushf-and-nop libc.s >$@
 
+libc-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -jump-only libc.s >$@
+
 libc-no-sfi-base.fis:	libc-ebx-schd.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -no-rodata-only libc-ebx-schd.s >$@
 
@@ -83,8 +86,14 @@ libc-no-sfi-pad.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 libc-no-sfi-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -nop-only libc.s >$@
 
+libc-no-sfi-noop-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -nop-only -jump-only libc.s >$@
+
 libc-no-sfi-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main -pushf-and-nop libc.s >$@
+
+libc-no-sfi-pushf-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -main -pushf-and-nop -jump-only libc.s >$@
 
 libc-no-stubs.o:	libc.c libc.h
 	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
@@ -104,8 +113,14 @@ libcplusplus-no-sfi-pad.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 libcplusplus-no-sfi-noop.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 	perl rewrite.pl -nop-only libcplusplus.s >$@
 
+libcplusplus-no-sfi-noop-jo.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -nop-only -jump-only libcplusplus.s >$@
+
 libcplusplus-no-sfi-pushf.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 	perl rewrite.pl -pushf-and-nop libcplusplus.s >$@
+
+libcplusplus-no-sfi-pushf-jo.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
+	perl rewrite.pl -pushf-and-nop -jump-only libcplusplus.s >$@
 
 %-nstr.s: %.s rewrite-stringops.pl
 	perl rewrite-stringops.pl $*.s >$@
@@ -118,6 +133,9 @@ libcplusplus-no-sfi-pushf.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
 
 %-pushf.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -pushf-and-nop $*-nstr.s >$@
+
+%-jo.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
+	perl rewrite.pl -jump-only $*-nstr.s >$@
 
 %.mo:	%.fis
 	$(AS) $*.fis -o $@
@@ -136,6 +154,9 @@ crtend.o: crtend.S
 
 %-pushf.fio:	%-pushf.mo libc-pushf.mo
 	ld $(SECTION) libc-pushf.mo $*-pushf.mo -o $@
+
+%-jo.fio:	%-jo.mo libc-jo.mo
+	ld $(SECTION) libc-jo.mo $*-jo.mo -o $@
 
 %.fio:	%.mo libc.mo
 	ld $(SECTION) libc.mo $*.mo -o $@
@@ -173,12 +194,13 @@ crtend.o: crtend.S
 %-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
 	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm
 
-%.out:	%.fio %-noop.fio %-pushf.fio %-raw %-noebx %-pad %-pad-noebx loader
+%.out:	%.fio %-noop.fio %-pushf.fio %-jo.fio %-raw %-noebx %-pad %-pad-noebx loader
 	-/usr/bin/time -f '%e %U %S'    -o $@ ./$*-raw 
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-noebx 
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-pad 
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-pad-noebx 
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*-noop.fio
+	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*-jo.fio
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*-pushf.fio
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./loader $*.fio
 
