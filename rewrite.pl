@@ -646,7 +646,7 @@ while (<INPUT>) {
     }
     if (/^\t(test|cmp)/) {
 	$forward_eflags_live = 1;
-    } elsif (/^\t(j$cond|jmp|call|ret)\t/) {
+    } elsif (/^\t(j$cond|set$cond|jmp|call|ret)\t/) {
 	$forward_eflags_live = 0;
     }
     #print "# <$.>\n" if ($. % 10) == 0;
