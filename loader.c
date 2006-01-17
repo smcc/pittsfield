@@ -625,18 +625,34 @@ void fail_verify(const char *msg, int offset) {
 }
 
 void fail_verify_int(const char *msg, int arg, int offset) {
-    printf("Verification failed: %s (%d) at offset 0x%08x\n",
+    printf("Verification failed: %s (0x%x) at offset 0x%08x\n",
 	   msg, arg, offset);
+    exit(1);
+}
+
+void fail_verify_insn(const char *msg, x86_insn_t *insn, int arg, int offset) {
+    char buf[100];
+    x86_format_insn(insn, buf, sizeof(buf), att_syntax);
+    printf("Verification failed: %s (0x%x) at offset 0x%08x\n",
+	   msg, arg, offset);
+    printf("Bad instruction %s\n", buf);
     exit(1);
 }
 
 void verify(int code_len) {
     int offset = 0;
-    offset = 0x9060;
+    int next_aligned = offset;
     x86_init(opt_none, 0);
     while (offset < code_len) {
 	x86_insn_t insn;
-	int len;
+	int len, i;
+	int arg_types;
+	x86_oplist_t args[4], *arg;
+	if (offset == next_aligned) {
+	    next_aligned += CHUNK_SIZE;
+	} else if (offset > next_aligned) {
+	    fail_verify("Bad chunk alignment", offset);
+	}
 	len = x86_disasm((unsigned char *)CODE_START, code_len,
 			 (unsigned long)CODE_START, offset, &insn);
 	if (len <= 0) {
@@ -656,6 +672,289 @@ void verify(int code_len) {
 	default:
 	    fail_verify_int("Illegal insn group", insn.group, offset);
 	}
+	switch (insn.type) {
+	    /* insn_controlflow */
+	case insn_jmp:
+	case insn_jcc:
+	case insn_call:
+	case insn_return:
+	    /* insn_arithmetic */
+	case insn_add:
+	case insn_sub:
+	case insn_mul:
+	case insn_div:
+	case insn_inc:
+	case insn_dec:
+	case insn_shl:
+	case insn_shr:
+	case insn_rol:
+	    /* insn_logic */
+	case insn_and:
+	case insn_or:
+	case insn_xor:
+	case insn_not:
+	case insn_neg:
+	    /* insn_stack */
+	case insn_push:
+	case insn_pop:
+	case insn_pushflags:
+	case insn_popflags:
+	case insn_leave:
+	    /* insn_comparison */
+	case insn_test:
+	case insn_cmp:
+	    /* insn_move */
+	case insn_mov:
+	case insn_movcc:
+	    /* insn_fpu */
+	case 0xa000:  /* XXX all FPU */
+	    /* insn_interrupt */
+	case insn_debug: /* int3 */
+	    /* insn_other */
+	case insn_nop:
+	case insn_szconv:
+	    break;
+	default:
+	    {
+		char buf[100];
+		x86_format_mnemonic(&insn, buf, sizeof(buf), att_syntax);
+		printf("Unknown instruction %s\n", buf);
+		fail_verify_int("Illegal insn type", insn.type, offset);
+	    }
+	}
+	assert(insn.explicit_count <= 3);
+	arg = insn.operands;
+	i = 0;
+	for (arg = insn.operands; arg; arg = arg->next) {
+	    if (!(arg->op.flags & op_implied)) {
+		args[i] = *arg;
+		args[i].next = &args[i+1];
+		i++;
+	    }
+	}
+	args[i-1].next = 0;
+	assert(i == insn.explicit_count);
+
+#define UNARY(op1)               ((op1) << 4 | 1)
+#define BINARY(op1, op2)         ((op1) << 8 | (op2) << 4 | 2)
+#define TERNARY(op1, op2, op3)   ((op1) << 12 | (op2) << 8 | (op1) << 4 | 3)
+	if (insn.explicit_count == 0) {
+	    arg_types = 0;
+	} else if (insn.explicit_count == 1) {
+	    arg_types = UNARY(args[0].op.type);
+	} else if (insn.explicit_count == 2) {
+	    arg_types = BINARY(args[0].op.type, args[1].op.type);
+	} else if (insn.explicit_count == 3) {
+	    arg_types = TERNARY(args[0].op.type, args[1].op.type,
+				args[2].op.type);
+	} else {
+	    printf("%d operands!\n", insn.explicit_count);
+	    arg_types = -1;
+	}
+	switch (arg_types) {
+	case 0:
+	    switch (insn.type) {
+	    case insn_return:
+	    case insn_nop:
+	    case insn_debug: /* int3 */
+	    case insn_szconv: /* e.g., cdq */
+	    case 0xa000: /* e.g., fldz */
+	    case insn_pushflags:
+	    case insn_popflags:
+	    case insn_mov: /* e.g., sahf */
+	    case insn_leave:
+		break;
+	    default:
+		fail_verify_insn("Unknown no-argument insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case UNARY(op_relative_near):
+	case UNARY(op_relative_far):
+	    switch (insn.type) {
+	    case insn_jcc:
+	    case insn_jmp:
+	    case insn_call:
+		break;
+	    default:
+		fail_verify_insn("Unknown relative insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case UNARY(op_register):
+	    switch (insn.type) {
+	    case insn_push:
+	    case insn_pop:
+	    case insn_jmp:
+	    case insn_call:
+	    case insn_inc: case insn_dec:
+	    case insn_neg: case insn_not:
+	    case insn_movcc: /* e.g., setne */
+	    case 0xa000: /* e.g., fstp %st(0) */
+		break;
+	    default:
+		fail_verify_insn("Unknown one-reg insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case UNARY(op_immediate):
+	    if (insn.type != insn_return) {
+		fail_verify_insn("Unknown one-immediate insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_register, op_immediate):
+	    switch (insn.type) {
+	    case insn_add: case insn_sub:
+	    case insn_and:
+	    case insn_mov:
+	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+	    case insn_cmp: case insn_test:
+	    case insn_or: case insn_xor:
+		break;
+	    default:
+		fail_verify_insn("Unknown imm,reg insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_register, op_register):
+	    switch (insn.type) {
+	    case insn_add: case insn_sub:
+	    case insn_mul: case insn_div:
+	    case insn_mov:
+	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+	    case insn_cmp: case insn_test:
+	    case insn_and:
+	    case insn_or: case insn_xor:
+	    case 0xa000: /* e.g., fxch */
+		break;
+	    default:
+		fail_verify_insn("Unknown reg,reg insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_register, op_expression):
+	    switch (insn.type) {
+	    case insn_mov: /* incl. lea */
+	    case insn_cmp: case insn_test:
+	    case insn_add: case insn_sub:
+	    case insn_and:
+	    case insn_or: case insn_xor:
+	    case insn_mul: case insn_div:
+		break;
+	    default:
+		fail_verify_insn("Unknown (expr),reg insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case UNARY(op_expression):
+	    switch (insn.type) {
+	    case insn_inc: case insn_dec:
+	    case insn_not: case insn_neg:
+	    case insn_movcc: /* e.g., setnz */
+	    case 0xa000: /* e.g., fstpq */
+		break;
+	    default:
+		fail_verify_insn("Unknown unary memory insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_expression, op_register):
+	    switch (insn.type) {
+	    case insn_mov:
+	    case insn_add: case insn_sub:
+
+	    case insn_cmp: case insn_test:
+
+	    case insn_and:
+	    case insn_or: case insn_xor:
+	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+		break;
+	    default:
+		fail_verify_insn("Unknown reg,(expr) insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_expression, op_immediate):
+	    switch (insn.type) {
+	    case insn_and: /* incl. and $mask, (%esp) */
+
+	    case insn_mov:
+	    case insn_add: case insn_sub:
+	    case insn_or: case insn_xor:	    
+	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+
+	    case insn_cmp: case insn_test:
+		break;
+	    default:
+		fail_verify_insn("Unknown imm,(expr) insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_offset, op_register):
+	    if (insn.type != insn_mov) {
+		fail_verify_insn("Unknown direct store insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case BINARY(op_register, op_offset):
+	    if (insn.type != insn_mov) {
+		fail_verify_insn("Unknown direct load insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case TERNARY(op_register, op_register, op_register):
+	    switch (insn.type) {
+	    case 0xa000: /* e.g., fcom */
+	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+	    case insn_inc: case insn_dec:
+	    case insn_mul: case insn_div:
+		break;
+	    default:
+		fail_verify_insn("Unknown 3-reg insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	case TERNARY(op_register, op_expression, op_register):
+	    switch (insn.type) {
+	    case insn_mul: case insn_div:
+		break;
+	    default:
+		fail_verify_insn("Unknown (expr),reg,reg insn", &insn,
+				 insn.type, offset);
+	    }
+	    break;
+	    
+	case TERNARY(op_relative_far, op_register, op_relative_far):
+	    fail_verify_insn("Unknown 3-arg relative insn", &insn,
+			     insn.type, offset);
+	    break;
+/* 		    x86_oplist_t *op = insn.operands; */
+/* 		    int i; */
+/* 		    printf("Args are:"); */
+/* 		    for (i = 0; i < insn.operand_count; i++) { */
+/* 			char buf[100]; */
+/* 			x86_format_operand(&op->op, &insn, buf, sizeof(buf), */
+/* 					   att_syntax); */
+/* 			printf(" %s", buf); */
+/* 			if (op->op.flags & op_implied) { */
+/* 			    printf("[I]"); */
+/* 			} */
+/* 			printf(";"); */
+/* 			op = op->next; */
+/* 		    } */
+/* 		    printf("\n"); */
+/* 		    fail_verify_insn("Unknown many-arg insn", &insn, */
+/* 				     insn.type, offset); */
+	default:
+	    fail_verify_insn("Illegal arg configuration", &insn,
+			     arg_types, offset);
+	}
+#undef UNARY
+#undef BINARY
+#undef TERNARY
+
+	x86_oplist_free(&insn);
 	offset += len;
     }
     printf("Verification finished at 0x%08x\n", CODE_START + offset);
