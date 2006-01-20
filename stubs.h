@@ -101,3 +101,8 @@ pid_t outside_wait(int *status);
 int outside_write(int fd, const void *buf, size_t count);
 
 void fail_check(void);
+
+void vx32__exit(int status);
+void vx32_read(int fd, void *buf, size_t count);
+void *vx32_sbrk(long inc);
+void vx32_write(int fd, const void *buf, size_t count);

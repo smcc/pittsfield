@@ -36,3 +36,4 @@ wrappers.h
 topformflat
 *.mo
 *-fewer-lines.c
+vx32-stub-list

@@ -28,9 +28,15 @@ if ($is_kernel) {
 }
 
 my $is_main = 0;
+my $stubs_list;
 if (grep($_ eq "-main", @ARGV)) {
     $is_main = 1;
+    $stubs_list = "stub-list";
     @ARGV = grep($_ ne "-main", @ARGV);
+} elsif (grep($_ eq "-vx32main", @ARGV)) {
+    $is_main = 1;
+    $stubs_list = "vx32-stub-list";
+    @ARGV = grep($_ ne "-vx32main", @ARGV);
 }
 
 if (grep($_ eq "-padonly", @ARGV)) {
@@ -456,7 +462,10 @@ sub maybe_rewrite {
 }
 
 sub print_stubs {
-    open(STUBS, "<stub-list");
+    my $script_loc = $0;
+    $script_loc =~ s([^/]+$)();
+    open(STUBS, "<${script_loc}$stubs_list")
+      or die "Can't open ${script_loc}$stubs_list: $!";
     my $i = 0;
     while (<STUBS>) {
 	my $f = $_;

@@ -84,6 +84,10 @@ extern unsigned long long
 __umoddi3(unsigned long long a, unsigned long long b);
 extern long long
 __moddi3(long long a, long long b);
+extern double
+__floatdidf(long long a);
+extern long long
+__fixdfdi(double a);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
@@ -102,6 +106,14 @@ unsigned long long wrap___umoddi3(unsigned long long a, unsigned long long b) {
 
 long long wrap___moddi3(long long a, long long b) {
     return __moddi3(a, b);
+}
+
+double wrap___floatdidf(long long a) {
+    return __floatdidf(a);
+}
+
+long long wrap___fixdfdi(double a) {
+    return __fixdfdi(a);
 }
 
 int wrap_printf(char *fmt, ...) {
@@ -595,6 +607,53 @@ void wrap_fail_check(void) {
     exit(1);
 }
 
+
+static int errno_to_vx32(int host_errno) {
+    switch (host_errno) {
+    case EINVAL: return 1;
+    case ENOMEM: return 2;
+    case EDOM:   return 3;
+    case ERANGE: return	4;
+    case EBADF:	 return 5;
+    case EPROTO: return 6;
+    case EIO:    return 7;
+    case ENOENT: return 8;
+    case EPIPE:	 return 9;
+    case EAGAIN: return 10;
+
+    default: return 1;
+    }
+}
+
+void wrap_vx32__exit(int status) {
+    exit_value = status;
+    longjmp(exit_buf, 1);
+}
+
+int wrap_vx32_read(int fd, void *buf, size_t count) {
+    int rc = read(fd, buf, count);
+    if (rc == -1) {
+	return -errno_to_vx32(errno);
+    } else {
+	return rc;
+    }
+}
+
+void *wrap_vx32_sbrk(long inc) {
+    return wrap_sbrk(inc);
+}
+
+int wrap_vx32_write(int fd, const void *buf, size_t count) {
+    int rc = write(fd, buf, count);
+    if (rc == -1) {
+	return -errno_to_vx32(errno);
+    } else {
+	return rc;
+    }
+}
+
+
+
 void init_wrappers() {
     files[0] = stdin;
     files[1] = stdout;
@@ -665,6 +724,7 @@ void verify(int code_len) {
 	case insn_stack:
 	case insn_comparison:
 	case insn_move:
+	case insn_bit_manip:
 	case insn_fpu:
 	case insn_interrupt:
 	case insn_other:
@@ -706,6 +766,8 @@ void verify(int code_len) {
 	    /* insn_move */
 	case insn_mov:
 	case insn_movcc:
+	    /* insn_bit_manip */
+	case insn_bittest:
 	    /* insn_fpu */
 	case 0xa000:  /* XXX all FPU */
 	    /* insn_interrupt */
@@ -826,6 +888,7 @@ void verify(int code_len) {
 	    case insn_cmp: case insn_test:
 	    case insn_and:
 	    case insn_or: case insn_xor:
+	    case insn_bittest:
 	    case 0xa000: /* e.g., fxch */
 		break;
 	    default:
@@ -957,7 +1020,7 @@ void verify(int code_len) {
 	x86_oplist_free(&insn);
 	offset += len;
     }
-    printf("Verification finished at 0x%08x\n", CODE_START + offset);
+    fprintf(stderr, "Verification finished at 0x%08x\n", CODE_START + offset);
     x86_cleanup();
 }
 #endif
@@ -987,7 +1050,7 @@ int main(int argc, char **argv) {
     }
 
 #ifndef LOADER_FIO
-    printf("Loader running with main at %p, malloc arena around %p\n",
+    fprintf(stderr, "Loader running with main at %p, malloc arena around %p\n",
 	   (void *)main, malloc(1));
 #endif    
 
@@ -1096,7 +1159,7 @@ int main(int argc, char **argv) {
     inside_ebp = inside_esp = (unsigned)DATA_END - 4;
     ret = call_in((void*)CODE_START, argc, argv);
 #ifndef LOADER_FIO
-    printf("Module returned %d\n", ret);
+    fprintf(stderr, "Module returned %d\n", ret);
 #endif
     return ret;
 }

@@ -28,6 +28,11 @@ my $crtend_o = "$pittsfield_dir/crtend.o";
 my @loader_flags = ("-static", "-lelf", "-lm",
 		    "-Wl,-T" => "-Wl,$highlink_x");
 
+my $vx32_dir = "/afs/csail.mit.edu/u/s/smcc/sfi/vxa-060115/vm";
+my $vx32_libc_inc = "$vx32_dir/cinc";
+my $vx32_libc_a = "$vx32_dir/clib/libc-pittsfield.a";
+my $vx32_crt0 = "$vx32_dir/clib/pittsfield/crt0.o";
+
 sub check_result {
     my($prog, $result) = @_;
     if ($result == -1) {
@@ -43,6 +48,7 @@ sub verbose_command {
     my($prog, @args) = @_;
     my $msg = join(" ", $prog, @args);
     $msg =~ s/$pittsfield_dir/~sfi/g;
+    $msg =~ s/$vx32_dir/~vx32/g;
     print STDERR "$msg\n";
     system($prog, @args);
     check_result($prog, $?);
@@ -55,6 +61,7 @@ sub verbose_redir_command {
     die unless substr($redir, 0, 1) eq ">";
     my $msg = join(" ", $prog, @args, $redir);
     $msg =~ s/$pittsfield_dir/~sfi/g;
+    $msg =~ s/$vx32_dir/~vx32/g;
     print STDERR "$msg\n";
     system(join(" ", $prog, @args, $redir));
     check_result($prog, $?);
@@ -102,6 +109,15 @@ for my $kind ("base", "noschd", "noebx", "pad", "noop", "pushf") {
 my $jump_only = (grep($_ eq "--jump-only", @args) > 0);
 @args = grep($_ ne "--jump-only", @args);
 
+my $vx32 = (grep($_ eq "--vx32", @args) > 0);
+@args = grep($_ ne "--vx32", @args);
+
+my $crt0 = (grep($_ eq "--crt0", @args) > 0);
+@args = grep($_ ne "--crt0", @args);
+
+my $fio_only = (grep($_ eq "--fio-only", @args) > 0);
+@args = grep($_ ne "--fio-only", @args);
+
 if ($no_sfi or $jump_only) {
     my $ext = "";
     $ext .= "-no-sfi-$no_sfi" if $no_sfi;
@@ -123,7 +139,12 @@ if ($minus_c and @c_files) {
     $basename =~ s/\..*$//;
     my $temp_file = "$temp_dir/sfigcc-$basename$$";
     if (!$pad_only) {
-	push @args, "-nostdinc", "-I$fake_libc_inc";
+	push @args, "-nostdinc";
+	if ($vx32) {
+	    push @args, "-I$vx32_libc_inc";
+	} else {
+	    push @args, "-I$fake_libc_inc";
+	}
 	push @args, "-fno-schedule-insns2" unless $no_sfi eq "base";
 	push @args, "--fixed-ebx"
 	  unless $no_sfi eq "base" or $no_sfi eq "noschd";
@@ -143,6 +164,9 @@ if ($minus_c and @c_files) {
     if ($jump_only) {
 	push @rewrite_flags, "-jump-only";
     }
+    if ($crt0) {
+	push @rewrite_flags, ($vx32 ? "-vx32main" : "-main");
+    }
     verbose_command($real_compiler,
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
     verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
@@ -156,7 +180,13 @@ if ($minus_c and @c_files) {
     unlink("$temp_file.fis");
 } elsif (!$minus_c and !@c_files) {
     # Link objects to executable
-    $out_file = "a.out" unless defined $out_file;
+    if (not defined $out_file) {
+	if ($fio_only) {
+	    $out_file = "a.out.fio";
+	} else {
+	    $out_file = "a.out";
+	}
+    }
 
     # Remove compiler-ish options
     @args = grep(!/^-O[0123456]$/, @args);
@@ -168,10 +198,19 @@ if ($minus_c and @c_files) {
 	# Don't try linking any libraries, it won't work
 	@args = grep(!/^-l/, @args);
 
-	my $temp_file = "$temp_dir/sfigcc-$out_file$$";
-	my $dis_file = "$temp_file.dis";
+	my $basename = $out_file;
+	$basename =~ s[^.*/][];
+	$basename =~ s/\..*$//;
 
-	my $fio_file = "$fio_dir/$out_file$$.fio";
+	my $temp_file = "$temp_dir/sfigcc-$basename$$";
+	my $dis_file = "$temp_file.dis";
+	
+	my $fio_file;
+	if ($fio_only) {
+	    $fio_file = $out_file;
+	} else {
+	    $fio_file = "$fio_dir/$out_file$$.fio";
+	}
 
 	if ($real_compiler =~ /\+\+/) {
 	    # Besides linking in our equivalent of libstdc++.a, we
@@ -183,7 +222,15 @@ if ($minus_c and @c_files) {
 	    push @ld_args, ("-T" => "$linkcpp_x");
 	}
 
-	verbose_command($ld, "-o", $fio_file, $libc_mo, @ld_args, @args);
+	my @start_objs;
+	if ($vx32) {
+	    @start_objs = ($vx32_crt0);
+	    push @args, $vx32_libc_a;
+	} else {
+	    @start_objs = ($libc_mo);
+	}
+
+	verbose_command($ld, "-o", $fio_file, @start_objs, @ld_args, @args);
 	if (!$no_sfi and !$jump_only) {
 	    verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
 	    open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
@@ -200,9 +247,11 @@ if ($minus_c and @c_files) {
 	    print $okay;
 	    unlink($dis_file);
 	}
-	verbose_command($real_compiler, "-o", $out_file, "-g",
-			qq/-DLOADER_FIO="$fio_file"/, $loader_c,
-			@loader_flags);
+	if (!$fio_only) {
+	    verbose_command($real_compiler, "-o", $out_file, "-g",
+			    qq/-DLOADER_FIO="$fio_file"/, $loader_c,
+			    @loader_flags);
+	}
     }
 } else {
     die "That compiler mode is not supported!";
