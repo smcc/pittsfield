@@ -57,7 +57,7 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 %-no-stubs.cc:	%.cc libc.h
 	$(CXX) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
 
-# libc{,plusplus}{,-{noop,pushf,no-sfi-{base,noschd,noebx,pad,noop,pushf}}}.mo
+# libc{,plusplus}{,-{jo,noop,pushf,no-sfi-{base,noschd,noebx,pad,{noop,pushf}{,-jo}}}}.mo 
 
 libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
 	perl rewrite.pl -main libc.s >$@
