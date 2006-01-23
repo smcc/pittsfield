@@ -1156,6 +1156,10 @@ int main(int argc, char **argv) {
     verify(code_len);
 #endif
     data_break = (void *)(DATA_START + data_size);
+    /* Align the start of the heap to a page boundary. This should
+       also compensate for any padding of the .bss section that wasn't
+       accounted for above. */
+    data_break = (void *)((unsigned)(data_break + 2*4096) & ~4095);
     inside_ebp = inside_esp = (unsigned)DATA_END - 4;
     ret = call_in((void*)CODE_START, argc, argv);
 #ifndef LOADER_FIO
