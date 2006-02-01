@@ -748,6 +748,7 @@ void verify(int code_len) {
 	case insn_shl:
 	case insn_shr:
 	case insn_rol:
+	case insn_ror:
 	    /* insn_logic */
 	case insn_and:
 	case insn_or:
@@ -860,9 +861,13 @@ void verify(int code_len) {
 	    }
 	    break;
 	case UNARY(op_immediate):
-	    if (insn.type != insn_return) {
-		fail_verify_insn("Unknown one-immediate insn", &insn,
-				 insn.type, offset);
+	    switch (insn.type) {
+	    case insn_push:
+	    case insn_return:
+	      break;
+	    default:
+	      fail_verify_insn("Unknown one-immediate insn", &insn,
+			       insn.type, offset);
 	    }
 	    break;
 	case BINARY(op_register, op_immediate):
@@ -915,6 +920,7 @@ void verify(int code_len) {
 	    case insn_inc: case insn_dec:
 	    case insn_not: case insn_neg:
 	    case insn_movcc: /* e.g., setnz */
+	    case insn_push:
 	    case 0xa000: /* e.g., fstpq */
 		break;
 	    default:
