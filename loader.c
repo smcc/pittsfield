@@ -689,7 +689,8 @@ void fail_verify_int(const char *msg, int arg, int offset) {
     exit(1);
 }
 
-void fail_verify_insn(const char *msg, x86_insn_t *insn, int arg, int offset) {
+void fail_verify_insn(const char *msg, x86_insn_t *insn, int arg, int offset) 
+{
     char buf[100];
     x86_format_insn(insn, buf, sizeof(buf), att_syntax);
     printf("Verification failed: %s (0x%x) at offset 0x%08x\n",
@@ -698,14 +699,79 @@ void fail_verify_insn(const char *msg, x86_insn_t *insn, int arg, int offset) {
     exit(1);
 }
 
+#define REGISTER_EAX 1
+#define REGISTER_ECX 2
+#define REGISTER_EDX 3
+#define REGISTER_EBX 4
+#define REGISTER_ESP 5
+#define REGISTER_EBP 6
+#define REGISTER_ESI 7
+#define REGISTER_EDI 8
+
+enum eff_addr_type {
+    EA_EBX_EXACT,  /* (%ebx) */
+    EA_ESP_EXACT,  /* (%esp), sometimes disassembled as (%esp,1) to
+		     match encoding */
+    EA_EBP_OFFSET, /* x(%ebp), where |x| < 2**16 */
+    EA_ESP_OFFSET, /* x(%esp), where |x| < 2**8 */
+    EA_DIRECT,     /* 0x...., but in ModRM encoding */
+    EA_OTHER,       /* anything else */
+};
+
+enum eff_addr_type classify_ea(x86_ea_t ea) {
+    if (ea.base.id == REGISTER_EBX &&
+	ea.index.id == 0 && ea.disp_size == 0)
+	return EA_EBX_EXACT;
+    else if (ea.base.id == REGISTER_ESP &&
+	     ea.index.id == 0 && ea.disp_size == 0) 
+	return EA_ESP_EXACT;
+    else if (ea.base.id == REGISTER_EBP &&
+	ea.index.id == 0 &&
+	(ea.disp_size <= 2 ||
+	 (ea.disp_sign && ea.disp > -32768)))
+	return EA_EBP_OFFSET;
+    else if (ea.base.id == REGISTER_ESP &&
+	     ea.index.id == 0 &&
+	     ea.disp_size <= 1)
+	return EA_ESP_OFFSET;
+    else if (ea.base.id == 0 && ea.index.id == 0 &&
+	     ea.disp_size == 4)
+	return EA_DIRECT;
+    else
+	return EA_OTHER;
+}
+
+#define BUMP_ESP            0x1
+#define CHANGE_EBP          0x2
+#define CHANGE_ESP          0x4
+#define EBP_DATA_SAFE       0x8
+#define EBX_CODE_SAFE      0x10
+#define EBX_DATA_SAFE      0x20
+#define IJUMP              0x40
+#define IREAD              0x80
+#define IWRITE            0x100
+#define JUMP              0x200
+#define STACK_TOP_SAFE    0x400
+#define USE_ESP           0x800
+#define USE_EBP          0x1000
+
+#define DATA_SAFETY      EBX_DATA_SAFE
+#define CODE_SAFETY      EBX_CODE_SAFE
+#define STACK_TOP_SAFETY STACK_TOP_SAFE
+#define EBP_SAFETY       EBP_DATA_SAFE
+#define ESP_SAFETY       USE_ESP
+
 void verify(int code_len) {
     int offset = 0;
     int next_aligned = offset;
+    int safety = 0, unsafety = 0;
+    int bump_count = 0;
     x86_init(opt_none, 0);
     while (offset < code_len) {
 	x86_insn_t insn;
 	int len, i;
 	int arg_types;
+	int flags;
 	x86_oplist_t args[4], *arg;
 	if (offset == next_aligned) {
 	    next_aligned += CHUNK_SIZE;
@@ -817,43 +883,106 @@ void verify(int code_len) {
 	switch (arg_types) {
 	case 0:
 	    switch (insn.type) {
-	    case insn_return:
 	    case insn_nop:
-	    case insn_debug: /* int3 */
-	    case insn_szconv: /* e.g., cdq */
-	    case 0xa000: /* e.g., fldz */
-	    case insn_pushflags:
-	    case insn_popflags:
-	    case insn_mov: /* e.g., sahf */
+		flags = 0;
+		break;
+	    case insn_return:
+		if (safety & STACK_TOP_SAFETY)
+		    flags = JUMP|USE_ESP|CHANGE_ESP;
+		else
+		    flags = JUMP|IJUMP|USE_ESP|CHANGE_ESP;
+		break;
 	    case insn_leave:
+		if (!(unsafety & CHANGE_EBP))
+		    flags = USE_ESP|CHANGE_EBP;
+		else
+		    flags = USE_ESP|CHANGE_EBP|USE_ESP;
+		break;
+	    case insn_pushflags: case insn_popflags:
+		flags = USE_ESP|CHANGE_ESP;
+		break;
+	    case insn_szconv: /* e.g., cdq */
+		flags = 0;
+		break;
+	    case 0xa000: /* e.g., fldz */
+		flags = 0;
+		break;
+	    case insn_debug: /* int3 */
+		flags = 0;
+		break;
+	    case insn_mov: /* e.g., sahf */
+		flags = 0;
 		break;
 	    default:
 		fail_verify_insn("Unknown no-argument insn", &insn,
 				 insn.type, offset);
+		assert(0); flags = -1;
 	    }
 	    break;
 	case UNARY(op_relative_near):
-	case UNARY(op_relative_far):
-	    switch (insn.type) {
-	    case insn_jcc:
-	    case insn_jmp:
-	    case insn_call:
-		break;
-	    default:
-		fail_verify_insn("Unknown relative insn", &insn,
-				 insn.type, offset);
+	case UNARY(op_relative_far):	    
+	    {
+		unsigned long target;
+		target = CODE_START + offset + insn.size;
+		if (args[0].op.type == op_relative_near) {
+		    target += args[0].op.data.relative_near;
+		} else if (args[0].op.type == op_relative_far) {
+		    target += args[0].op.data.relative_far;
+		} else {
+		    assert(0);
+		}
+		switch (insn.type) {
+		case insn_jcc:
+		case insn_jmp:
+		case insn_call:
+		    if (target & (CHUNK_SIZE - 1))
+			fail_verify_insn("Unaligned literal target", &insn,
+					 target, offset);
+		    if (target < CODE_START || target >= CODE_END)
+			fail_verify_insn("Literal target out of range", &insn,
+					 target, offset);
+		    flags = JUMP;
+		    if (insn.type == insn_call)
+			flags |= USE_ESP;
+		    break;
+		default:
+		    fail_verify_insn("Unknown relative insn", &insn,
+				     insn.type, offset);
+		    assert(0); flags = -1;
+		}
 	    }
 	    break;
 	case UNARY(op_register):
+	    flags = 0;
+	    if (args[0].op.data.reg.id    == REGISTER_EBP ||
+		args[0].op.data.reg.alias == REGISTER_EBP)
+		flags |= CHANGE_EBP;
+	    if (args[0].op.data.reg.id    == REGISTER_ESP ||
+		args[0].op.data.reg.alias == REGISTER_ESP)
+		flags |= CHANGE_ESP;
 	    switch (insn.type) {
 	    case insn_push:
+		flags = USE_ESP|CHANGE_ESP;
+		break;
 	    case insn_pop:
-	    case insn_jmp:
-	    case insn_call:
+		flags |= USE_ESP|CHANGE_ESP;
+		break;
 	    case insn_inc: case insn_dec:
-	    case insn_neg: case insn_not:
+		break;
 	    case insn_movcc: /* e.g., setne */
+		break;
 	    case 0xa000: /* e.g., fstp %st(0) */
+		break;
+	    case insn_neg: case insn_not:
+		break;
+	    case insn_call: 
+		flags |= USE_ESP;
+		/* fall through */
+	    case insn_jmp: /* i.e., jmp *%reg */
+		flags |= JUMP;
+		if (!(args[0].op.data.reg.id == REGISTER_EBX &&
+		      safety & CODE_SAFETY))
+		    flags |= IJUMP;
 		break;
 	    default:
 		fail_verify_insn("Unknown one-reg insn", &insn,
@@ -863,17 +992,56 @@ void verify(int code_len) {
 	case UNARY(op_immediate):
 	    switch (insn.type) {
 	    case insn_push:
+		flags = USE_ESP|CHANGE_ESP;
+		break;
 	    case insn_return:
-	      break;
+		flags = USE_ESP|CHANGE_ESP;
+		break;
 	    default:
-	      fail_verify_insn("Unknown one-immediate insn", &insn,
-			       insn.type, offset);
+		fail_verify_insn("Unknown one-immediate insn", &insn,
+				 insn.type, offset);
+		assert(0); flags = -1;
 	    }
 	    break;
 	case BINARY(op_register, op_immediate):
+	    flags = 0;
+	    if (args[0].op.data.reg.id    == REGISTER_EBP ||
+		args[0].op.data.reg.alias == REGISTER_EBP)
+		flags |= CHANGE_EBP;
+	    if (args[0].op.data.reg.id == REGISTER_ESP) {
+		if ((insn.type == insn_add || insn.type == insn_sub) &&
+		    args[1].op.datatype == op_byte) {
+		    flags |= BUMP_ESP;
+		} else if (insn.type == insn_and
+			   && args[1].op.datatype == op_byte
+			   && args[1].op.data.dword == 0xf0) {
+		    flags |= BUMP_ESP;
+		} else {
+		    flags |= CHANGE_ESP;
+		}
+		    
+	    }
 	    switch (insn.type) {
-	    case insn_add: case insn_sub:
 	    case insn_and:
+		if (args[0].op.data.reg.id == REGISTER_EBX &&
+		    args[1].op.datatype == op_dword &&
+		    args[1].op.data.dword == DATA_MASK) {
+		    flags = EBX_DATA_SAFE;
+		} else if (args[0].op.data.reg.id == REGISTER_EBX &&
+			   args[1].op.datatype == op_dword &&
+			   args[1].op.data.dword == JUMP_MASK) {
+		    flags = EBX_CODE_SAFE;
+		} else if (args[0].op.data.reg.id == REGISTER_EBP &&
+			   args[1].op.datatype == op_dword &&
+			   args[1].op.data.dword == DATA_MASK) {
+		    flags = EBP_DATA_SAFE;
+		} else if (args[0].op.data.reg.id == REGISTER_ESP &&
+			   args[1].op.datatype == op_dword &&
+			   args[1].op.data.dword == DATA_MASK) {
+		    flags = ESP_SAFETY;
+		}
+		break;
+	    case insn_add: case insn_sub:
 	    case insn_mov:
 	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
 	    case insn_cmp: case insn_test:
@@ -885,10 +1053,27 @@ void verify(int code_len) {
 	    }
 	    break;
 	case BINARY(op_register, op_register):
+	    flags = 0;
+	    if (args[1].op.data.reg.id    == REGISTER_EBP ||
+		args[1].op.data.reg.alias == REGISTER_EBP)
+		flags |= CHANGE_EBP;
+	    if (args[1].op.data.reg.id    == REGISTER_ESP ||
+		args[1].op.data.reg.alias == REGISTER_ESP)
+		flags |= CHANGE_ESP;
 	    switch (insn.type) {
+	    case insn_mov:
+		if (args[0].op.data.reg.id == REGISTER_ESP &&
+		    args[1].op.data.reg.id == REGISTER_EBP &&
+		    !(unsafety & (CHANGE_ESP|BUMP_ESP))) {
+		    flags = EBP_SAFETY;
+		} else if (args[0].op.data.reg.id == REGISTER_EBP &&
+			   args[1].op.data.reg.id == REGISTER_ESP &&
+			   !(unsafety & CHANGE_EBP)) {
+		    flags = USE_ESP;
+		}
+		break;
 	    case insn_add: case insn_sub:
 	    case insn_mul: case insn_div:
-	    case insn_mov:
 	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
 	    case insn_cmp: case insn_test:
 	    case insn_and:
@@ -902,6 +1087,15 @@ void verify(int code_len) {
 	    }
 	    break;
 	case BINARY(op_register, op_expression):
+	    flags = 0;
+	    if (args[0].op.data.reg.id    == REGISTER_EBP ||
+		args[0].op.data.reg.alias == REGISTER_EBP)
+		flags |= CHANGE_EBP;
+	    if (args[0].op.data.reg.id    == REGISTER_ESP ||
+		args[0].op.data.reg.alias == REGISTER_ESP) {
+		/* XXX ESP bump via lea */
+		flags |= CHANGE_ESP;
+	    }
 	    switch (insn.type) {
 	    case insn_mov: /* incl. lea */
 	    case insn_cmp: case insn_test:
@@ -917,62 +1111,161 @@ void verify(int code_len) {
 	    break;
 	case UNARY(op_expression):
 	    switch (insn.type) {
+	    case insn_push:
+		flags = USE_ESP|CHANGE_ESP;
+		break;
+	    case 0xa000: /* e.g., fstpq */
+		flags = 0; /* XXX floating stores */
+		break;
 	    case insn_inc: case insn_dec:
 	    case insn_not: case insn_neg:
 	    case insn_movcc: /* e.g., setnz */
-	    case insn_push:
-	    case 0xa000: /* e.g., fstpq */
-		break;
+		{
+		    x86_ea_t ea = args[0].op.data.expression;
+		    enum eff_addr_type ea_type = classify_ea(ea);
+		    if (ea_type == EA_EBX_EXACT && safety & DATA_SAFETY)
+			flags = 0;
+		    else if (ea_type == EA_EBP_OFFSET
+			     && !(unsafety & CHANGE_EBP))
+			flags = 0;
+		    else if ((ea_type == EA_ESP_OFFSET ||
+			      ea_type == EA_ESP_EXACT) &&
+			     !(unsafety & CHANGE_ESP))
+			flags = USE_ESP;
+		    else if (ea_type == EA_DIRECT &&
+			     ea.disp >= DATA_START && ea.disp < DATA_END)
+			flags = 0;
+		    else
+			flags = IWRITE;
+		    break;
+		}
 	    default:
 		fail_verify_insn("Unknown unary memory insn", &insn,
 				 insn.type, offset);
+		assert(0); flags = -1;
 	    }
 	    break;
 	case BINARY(op_expression, op_register):
-	    switch (insn.type) {
-	    case insn_mov:
-	    case insn_add: case insn_sub:
-
-	    case insn_cmp: case insn_test:
-
-	    case insn_and:
-	    case insn_or: case insn_xor:
-	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
-		break;
-	    default:
-		fail_verify_insn("Unknown reg,(expr) insn", &insn,
-				 insn.type, offset);
+	    {
+		int simple = 0;
+		x86_ea_t ea = args[0].op.data.expression;
+		enum eff_addr_type ea_type = classify_ea(ea);
+		if (ea_type == EA_EBX_EXACT && safety & DATA_SAFETY) {
+		    flags = 0;
+		    break;
+		} else if (ea_type == EA_EBP_OFFSET
+			   && !(unsafety & CHANGE_EBP)) {
+		    simple = USE_EBP;
+		} else if ((ea_type == EA_ESP_OFFSET ||
+			    ea_type == EA_ESP_EXACT) &&
+			   !(unsafety & CHANGE_ESP)) {
+		    simple = USE_ESP;
+		} else if (ea_type == EA_DIRECT &&
+			   ea.disp >= DATA_START && ea.disp < DATA_END) {
+		    flags = 0;
+		    break;
+		}
+		switch (insn.type) {
+		case insn_cmp: case insn_test:
+		    flags = (simple ? simple : IREAD);
+		    break;
+		case insn_mov:
+		case insn_add: case insn_sub:
+		case insn_and:
+		case insn_or: case insn_xor:
+		case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+		    flags = (simple ? simple : IWRITE);
+		    break;
+		default:
+		    fail_verify_insn("Unknown reg,(expr) insn", &insn,
+				     insn.type, offset);
+		    assert(0); flags = -1;
+		}
 	    }
 	    break;
 	case BINARY(op_expression, op_immediate):
-	    switch (insn.type) {
-	    case insn_and: /* incl. and $mask, (%esp) */
-
-	    case insn_mov:
-	    case insn_add: case insn_sub:
-	    case insn_or: case insn_xor:	    
-	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
-
-	    case insn_cmp: case insn_test:
-		break;
-	    default:
-		fail_verify_insn("Unknown imm,(expr) insn", &insn,
-				 insn.type, offset);
+	    {
+		int simple = 0;
+		x86_ea_t ea = args[0].op.data.expression;
+		enum eff_addr_type ea_type = classify_ea(ea);
+		if (ea_type == EA_EBX_EXACT && safety & DATA_SAFETY) {
+		    flags = 0;
+		    break;
+		} else if (ea_type == EA_EBP_OFFSET
+			   && !(unsafety & CHANGE_EBP)) {
+		    simple = USE_EBP;
+		} else if (ea_type == EA_ESP_EXACT &&
+			   insn.type == insn_and &&
+			   args[1].op.datatype == op_dword &&
+			   args[1].op.data.dword == JUMP_MASK) {
+		    flags = USE_ESP|STACK_TOP_SAFE;
+		    break;
+		} else if ((ea_type == EA_ESP_OFFSET ||
+			    ea_type == EA_ESP_EXACT) &&
+			   !(unsafety & CHANGE_ESP)) {
+		    simple = USE_ESP;
+		} else if (ea_type == EA_DIRECT &&
+			   ea.disp >= DATA_START && ea.disp < DATA_END) {
+		    flags = 0;
+		    break;
+		}
+		switch (insn.type) {
+		case insn_and:
+		case insn_mov:
+		case insn_add: case insn_sub:
+		case insn_or: case insn_xor:	    
+		case insn_shr: case insn_shl: case insn_rol: case insn_ror:
+		    flags = (simple ? simple : IWRITE);
+		    break;
+		case insn_cmp: case insn_test:
+		    flags = (simple ? simple : IREAD);
+		    break;
+		default:
+		    fail_verify_insn("Unknown imm,(expr) insn", &insn,
+				     insn.type, offset);
+		    assert(0); flags = -1;
+		}
 	    }
 	    break;
 	case BINARY(op_offset, op_register):
-	    if (insn.type != insn_mov) {
+	    if (insn.type == insn_mov) {
+		unsigned long d_offset = args[0].op.data.offset;
+		if (d_offset >= DATA_START && d_offset < DATA_END) {
+		    flags = 0;
+		} else {
+		    fail_verify_insn("Direct store outside data region", &insn,
+				     d_offset, offset);
+		    assert(0); flags = -1;
+		}    
+	    } else {
 		fail_verify_insn("Unknown direct store insn", &insn,
 				 insn.type, offset);
+		assert(0); flags = -1;
 	    }
 	    break;
 	case BINARY(op_register, op_offset):
-	    if (insn.type != insn_mov) {
+	    if (insn.type == insn_mov) {
+		flags = 0;
+	    } else {
 		fail_verify_insn("Unknown direct load insn", &insn,
 				 insn.type, offset);
+		assert(0); flags = -1;
 	    }
 	    break;
 	case TERNARY(op_register, op_register, op_register):
+	    flags = 0;
+	    if (args[1].op.data.reg.id    == REGISTER_EBP ||
+		args[1].op.data.reg.alias == REGISTER_EBP)
+		flags |= CHANGE_EBP;
+	    if (args[1].op.data.reg.id    == REGISTER_ESP ||
+		args[1].op.data.reg.alias == REGISTER_ESP)
+		flags |= CHANGE_ESP;
+	    if (args[2].op.data.reg.id    == REGISTER_EBP ||
+		args[2].op.data.reg.alias == REGISTER_EBP)
+		flags |= CHANGE_EBP;
+	    if (args[2].op.data.reg.id    == REGISTER_ESP ||
+		args[2].op.data.reg.alias == REGISTER_ESP)
+		flags |= CHANGE_ESP;
 	    switch (insn.type) {
 	    case 0xa000: /* e.g., fcom */
 	    case insn_shr: case insn_shl: case insn_rol: case insn_ror:
@@ -987,16 +1280,19 @@ void verify(int code_len) {
 	case TERNARY(op_register, op_expression, op_register):
 	    switch (insn.type) {
 	    case insn_mul: case insn_div:
+		flags = 0;
 		break;
 	    default:
 		fail_verify_insn("Unknown (expr),reg,reg insn", &insn,
 				 insn.type, offset);
+		assert(0); flags = -1;
 	    }
 	    break;
 	    
 	case TERNARY(op_relative_far, op_register, op_relative_far):
 	    fail_verify_insn("Unknown 3-arg relative insn", &insn,
 			     insn.type, offset);
+	    assert(0); flags = -1;
 	    break;
 /* 		    x86_oplist_t *op = insn.operands; */
 /* 		    int i; */
@@ -1018,10 +1314,43 @@ void verify(int code_len) {
 	default:
 	    fail_verify_insn("Illegal arg configuration", &insn,
 			     arg_types, offset);
+	    assert(0); flags = -1;
 	}
 #undef UNARY
 #undef BINARY
 #undef TERNARY
+
+	if (flags & IJUMP) {
+	    fail_verify_insn("Unsafe indirect jump", &insn, flags, offset);
+	} else if (flags & IWRITE) {
+	    fail_verify_insn("Unsafe indirect write", &insn, flags, offset);
+	} else if (flags & JUMP && unsafety & (CHANGE_ESP|BUMP_ESP)) {
+	    fail_verify_insn("Unsafe %esp escapes by jump", &insn,
+			     flags, offset);
+	} else if (flags & JUMP && unsafety & CHANGE_EBP) {
+	    fail_verify_insn("Unsafe %ebp escapes by jump", &insn,
+			     flags, offset);
+	}
+	if (insn.type == insn_popflags)
+	    safety = safety & (EBX_DATA_SAFE|EBX_CODE_SAFE);
+	else
+	    safety = 0;
+	safety |= flags & (EBX_DATA_SAFE|EBX_CODE_SAFE|STACK_TOP_SAFE|
+			   EBP_DATA_SAFE);
+	unsafety |= flags & (CHANGE_ESP|CHANGE_EBP|BUMP_ESP);
+	if (flags & BUMP_ESP)
+	    bump_count++;
+	if (bump_count >= 250)
+	    unsafety |= CHANGE_ESP;
+	if (flags & USE_ESP) {
+	    unsafety &= ~(CHANGE_ESP|BUMP_ESP);
+	    bump_count = 0;
+	}
+	if (flags & EBP_SAFETY)
+	    unsafety &= ~CHANGE_EBP;
+	/*printf("After %08x: ESP: %x    EBP: %x    EBX: %x\n", offset,
+	       unsafety & (CHANGE_ESP|BUMP_ESP), unsafety & CHANGE_EBP,
+	       safety & (EBX_DATA_SAFE|EBX_CODE_SAFE));*/
 
 	x86_oplist_free(&insn);
 	offset += len;
@@ -1040,8 +1369,8 @@ int main(int argc, char **argv) {
     int fd;
     int ph_count;
     int data_size = 0;
-    int data_len, data_offset;
-    int code_len, code_offset;
+    int data_len = 0, data_offset = 0;
+    int code_len = 0, code_offset = 0;
     int rodata_len = 0, rodata_offset = 0;
     int ret;
     void *retp;
@@ -1157,10 +1486,10 @@ int main(int argc, char **argv) {
     read(fd, (void *)DATA_START, data_len);
     close(fd);
     init_wrappers();
-    install_stubs();
 #ifdef VERIFY
     verify(code_len);
 #endif
+    install_stubs();
     data_break = (void *)(DATA_START + data_size);
     /* Align the start of the heap to a page boundary. This should
        also compensate for any padding of the .bss section that wasn't
