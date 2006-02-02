@@ -74,10 +74,12 @@ sub write_header {
     print "/* Automatically generated from sizes.pm; don't edit directly */\n";
     print "\n";
 
-    printf "#define CODE_START 0x%08x\n", $code_start unless $is_kernel;
-    printf "#define CODE_SIZE  0x%08x\n", $code_size;
-    printf "#define DATA_START 0x%08x\n", $data_start unless $is_kernel;
-    printf "#define DATA_SIZE  0x%08x\n", $data_size;
+    printf "#define CODE_START 0x%08xU\n", $code_start unless $is_kernel;
+    printf "#define CODE_SIZE  0x%08xU\n", $code_size;
+    printf "#define DATA_START 0x%08xU\n", $data_start unless $is_kernel;
+    printf "#define DATA_SIZE  0x%08xU\n", $data_size;
+    printf "#define DATA_MASK  0x%08xU\n", $data_mask;
+    printf "#define JUMP_MASK  0x%08xU\n", $jump_mask;
     printf "#define CHUNK_SIZE  0x%x\n", $chunk_size;
     printf "#define STUB_SIZE  0x%x\n", $stub_size;
     if (!$is_kernel) {
