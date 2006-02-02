@@ -124,12 +124,12 @@ sub check_insn {
 		return $flags;
 	    } elsif ($target =~ /^($lhalf|0xffff[0-9a-f]{4})\(%ebp\)$/) {
 		my $offset = unpack("i", pack("I", hex($1)));
-		if (abs($offset) < 32767) {
+		if (!($unsafety & CHANGE_EBP) and abs($offset) < 32767) {
 		    return 0;
 		}
 	    } elsif ($target =~ /^($lhalf|0xffff[0-9a-f]{4}|)\(%esp(,1)?\)$/) {
 		my $offset = unpack("i", pack("I", hex($1)));
-		if (abs($offset) < 127) {
+		if (!($unsafety & CHANGE_ESP) and abs($offset) < 127) {
 		    return 0;
 		}
 	    }
@@ -242,7 +242,7 @@ sub check_insn {
 	my $simple = 0;
 	if ($to =~ /^($lhalf|0xffff[0-9a-f]{4})\(%ebp\)$/) {
 	    my $offset = unpack("i", pack("I", hex($1)));
-	    if (abs($offset) < 32768) {
+	    if (!($unsafety & CHANGE_EBP) and abs($offset) < 32768) {
 		$simple = USE_EBP;
 	    }
 	} elsif ($to =~ /^($lhalf|0xffff[0-9a-f]{4}|)\(%esp(,1)?\)$/) {
@@ -254,7 +254,7 @@ sub check_insn {
 		     and ($to = "(%esp,1)" || $to eq "(%esp)")
 		     and $safety & STACK_TOP_SAFE) {
 		return USE_ESP|STACK_TOP_XSAFE;
-	    } elsif (abs($offset) < 127) {
+	    } elsif (!($unsafety & CHANGE_ESP) and abs($offset) < 127) {
 		$simple = USE_ESP;
 	    }
 	} elsif ($to eq "(%ebx)" and $safety & $data_safety) {
@@ -314,7 +314,7 @@ sub check_insn {
 	my $simple_ebp;
 	if ($from =~ /^(0x[0-9a-f]+)\(%ebp\)$/) {
 	    my $offset = unpack("i", pack("I", hex($1)));
-	    if (abs($offset) <= 65535) {
+	    if (!($unsafety & CHANGE_EBP) and abs($offset) <= 65535) {
 		$simple_ebp = 1;
 	    }
 	}
@@ -332,12 +332,12 @@ sub check_insn {
 	my $simple = 0;
 	if ($to =~ /^(0x[0-9a-f]+)\(%ebp\)$/) {
 	    my $offset = unpack("i", pack("I", hex($1)));
-	    if (abs($offset) < 32767) {
+	    if (!($unsafety & CHANGE_EBP) and abs($offset) < 32767) {
 		$simple = USE_EBP;
 	    }
 	} elsif ($to =~ /^((0x[0-9a-f]+)?)\(%esp(,1)?\)$/) {
 	    my $offset = unpack("i", pack("I", hex($1)));
-	    if (abs($offset) < 127) {
+	    if (!($unsafety & CHANGE_ESP) and abs($offset) < 127) {
 		$simple = USE_ESP;
 	    }
 	} elsif ($to eq "(%ebx)" and $safety & $data_safety) {
@@ -413,14 +413,13 @@ while (<>) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);
-	if ($flags & (IJUMP|IWRITE) and $addr != $code_start + 0x13) {
+	if ($flags & (IJUMP|IWRITE)) {
 	    printf "Unsafe %s %s at 0x%08x ($safety)\n", $op, $args, $addr;
 	}
 	if ($flags & JUMP and $unsafety & CHANGE_EBP) {
 	    printf "Unsafe %%ebp escapes by jump at 0x%08x\n", $addr;
 	}
-	if ($flags & JUMP and $unsafety & (CHANGE_ESP|BUMP_ESP)
-	    and $addr != $code_start + 0x13) {
+	if ($flags & JUMP and $unsafety & (CHANGE_ESP|BUMP_ESP)) {
 	    printf "Unsafe %%esp escapes by jump at 0x%08x\n", $addr;
 	}
 	if ($op eq "popf") {
