@@ -652,7 +652,7 @@ while (<INPUT>) {
 	emit("orl\t$DATA_START, %ebp", 6, 1) if $DO_OR;
 	emit_test("%ebp", $DATA_ANTI_MASK, 1) if $DO_TEST;
 	a_emit("popf", 1, 1) if $precious_eflags;
-    } elsif ($data_sandbox and 
+    } elsif ($data_sandbox and
 	     (/^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/ or
 	      /^\t(add|sub|lea)l\s+\$(0x[0-9a-f]+|\d+), %esp$/
 	       && hex($2) > 255)) {
