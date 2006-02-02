@@ -546,11 +546,16 @@ if ($is_kernel) {
     print;
     if ($is_main) {
 	nop_pad($chunk_size - 7);
-	print "\tpushl %edx\n"; # argv - 1 byte
-	print "\tpushl %ecx\n"; # argc - 1 byte
+	print "\tpushl %edx\n"; # argv: 1 byte
+	print "\tpushl %ecx\n"; # argc: 1 byte
 	print "\tcall _start\n"; # 5 bytes
 	print "\taddl \$8,%esp\n"; # pop argc and argv
-	print "\tret\n";
+	print "\tpushl %eax\n"; # return of main => arg to exit
+	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+	emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
+	emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
+	emit_test("%esp", $DATA_ANTI_MASK, 1) if $DO_TEST;
+	print "\tcall exit\n"; # will not return
 	print "\t.p2align $log_chunk_size\n";
     }
 }
@@ -647,7 +652,10 @@ while (<INPUT>) {
 	emit("orl\t$DATA_START, %ebp", 6, 1) if $DO_OR;
 	emit_test("%ebp", $DATA_ANTI_MASK, 1) if $DO_TEST;
 	a_emit("popf", 1, 1) if $precious_eflags;
-    } elsif ($data_sandbox and /^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/) {
+    } elsif ($data_sandbox and 
+	     (/^\t(add|sub|lea)l\s+($ereg|$complex), %esp$/ or
+	      /^\t(add|sub|lea)l\s+\$(0x[0-9a-f]+|\d+), %esp$/
+	       && hex($2) > 255)) {
 	maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
 	emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
 	emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
