@@ -99,7 +99,7 @@ SECTIONS
     *(.data .data.* .gnu.linkonce.d.*)
     KEEP (*(.gnu.linkonce.d.*personality*))
     SORT(CONSTRUCTORS)
-    /* We put .ctors and .dtors in the data segment, to save to loader
+    /* We put .ctors and .dtors in the data segment, to save the loader
        work. */
     KEEP (*crtbegin*.o(.ctors))
     KEEP (*(EXCLUDE_FILE (*crtend*.o ) .ctors))
