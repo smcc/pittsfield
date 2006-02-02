@@ -15,7 +15,7 @@ NO_SCHD := -fno-schedule-insns2
 .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
 loader:	loader.c wrappers.h sizes.h high-link.x
-	$(CC) -Wall -DVERIFY -g -static loader.c libdisasm.a -lelf -lm -Wl,-T -Wl,high-link.x -o loader
+	$(CC) -O2 -Wall -DVERIFY -g -static loader.c libdisasm.a -lelf -lm -Wl,-T -Wl,high-link.x -o loader
 	@#$(CC) -Wall -g loader.c -lelf -lm -o loader
 
 wrappers.h: gen-stubs
