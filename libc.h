@@ -604,9 +604,9 @@ REPLACEMENT int chmod(const char *path, mode_t mode);
 REPLACEMENT char *ctime(const time_t *timep);
 REPLACEMENT int dup(int oldfd);
 REPLACEMENT int dup2(int oldfd, int newfd);
-REPLACEMENT int execl(const char *path, ...); 
-REPLACEMENT int execlp(const char *file, ...);
-REPLACEMENT int execle(const char *path, ...);
+REPLACEMENT int execl(const char *path, const char *arg, ...); 
+REPLACEMENT int execlp(const char *file, const char *arg,...);
+REPLACEMENT int execle(const char *path, const char *arg,...);
 REPLACEMENT int execv(const char *path, char *const argv[]);
 REPLACEMENT int execvp(const char *file, char *const argv[]);
 REPLACEMENT int execve(const char *path, char *const argv[],

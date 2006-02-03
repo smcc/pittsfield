@@ -1,13 +1,20 @@
 VERSION:=0.4
 
 OPT:=-O3 -ffast-math
+CXXFLAGS := -fno-exceptions -fno-rtti
 DEBUG:=-g
-CC:=gcc
-CXX:=g++ -fno-exceptions -fno-rtti
 AS:=as
-TFF:=./topformflat
 NO_EBX := --fixed-ebx
 NO_SCHD := -fno-schedule-insns2
+
+# CC  := gcc-3.3
+# CXX := g++-3.3
+# FEWER_LINES_HACK := 1
+# TFF := ./topformflat
+
+CC  := gcc-4.0
+CXX := g++-4.0
+
 
 VERIFY_CFLAGS := -I../../libdisasm_0.21-pre2/libdisasm -DVERIFY
 VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
@@ -18,6 +25,9 @@ SIZE ?= classic
 REWRITE := perl rewrite.pl -size-$(SIZE)
 VERIFY_PL := perl verify.pl -size-$(SIZE)
 SECTION := $(shell perl -Msizes -e 'sizes::write_ld_flags "$(SIZE)"')
+SIZE_DEFINE := $(shell perl -Msizes -e 'compute_sizes("$(SIZE)"); print "-D$$size_macro"')
+
+CFLAGS := $(DEBUG) $(OPT) $(SIZE_DEFINE)
 
 # .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
@@ -47,25 +57,26 @@ sizes.h: sizes.pm
 	perl -Msizes -e 'sizes::write_header' >sizes.h
 
 %.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $(NO_EBX) $*.c
+	$(CC) -Wall -S $(CFLAGS) $(NO_SCHD) $(NO_EBX) $*.c
 
 %-ebx.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $*.c -o $@
+	$(CC) -Wall -S $(CFLAGS) $(NO_SCHD) $*.c -o $@
 
 %-ebx-schd.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(DEBUG) $(OPT) $*.c -o $@
+	$(CC) -Wall -S $(CFLAGS) $*.c -o $@
 
 %.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $(NO_EBX) $*.cc
+	$(CXX) $(CXXFLAGS) -Wall -S $(CFLAGS) $(NO_SCHD) $(NO_EBX) $*.cc
 
 %-ebx.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) -Wall -S $(DEBUG) $(OPT) $(NO_SCHD) $*.cc -o $@
+	$(CXX) $(CXXFLAGS) -Wall -S $(CFLAGS) $(NO_SCHD) $*.cc -o $@
 
 %-ebx-schd.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) -Wall -S $(DEBUG) $(OPT) $*.cc -o $@
+	$(CXX) $(CXXFLAGS) -Wall -S $(CFLAGS) $*.cc -o $@
 
+ifdef FEWER_LINES_HACK
 gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(DEBUG) $(OPT) $(NO_EBX) gcc-mod-fewer-lines.c -o $@
+	$(CC) -Wall -S $(CFLAGS) $(NO_EBX) gcc-mod-fewer-lines.c -o $@
 
 %-fewer-lines.c:	%.c sizes.h libc.c libc.h stubs.h
 	$(CC) -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-fewer-lines.c
@@ -74,7 +85,14 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 	$(CC) -DNO_STUBS -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.c
 
 %-no-stubs.cc:	%.cc libc.h
-	$(CXX) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
+	$(CXX) $(CXXFLAGS) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
+else
+%-no-stubs.c:	%.c libc.h
+	$(CC) -DNO_STUBS -E $*.c >$*-no-stubs.c
+
+%-no-stubs.cc:	%.cc libc.h
+	$(CXX) $(CXXFLAGS) -DNO_STUBS -E $*.cc  >$*-no-stubs.cc
+endif
 
 # libc{,plusplus}{,-{jo,noop,pushf,no-sfi-{base,noschd,noebx,pad,{noop,pushf}{,-jo}}}}.mo 
 
@@ -184,22 +202,22 @@ crtend.o: crtend.S
 	objdump -d $*.fio | $(VERIFY_PL) 2>&1 | tee $*.check
 
 %-no-stubs-ebx.s:	%-no-stubs.c
-	$(CC) $(OPT) -S $*-no-stubs.c -o $*-no-stubs-ebx.s
+	$(CC) $(CFLAGS) -S $*-no-stubs.c -o $*-no-stubs-ebx.s
 
 %-no-stubs-ebx.s:	%-no-stubs.cc
-	$(CXX) $(OPT) -S $*-no-stubs.cc -o $*-no-stubs-ebx.s
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -S $*-no-stubs.cc -o $*-no-stubs-ebx.s
 
 %-no-ebx.s:	%-no-stubs.c 
-	$(CC) $(OPT) -S $(NO_EBX) $*-no-stubs.c -o $*-no-ebx.s
+	$(CC) $(CFLAGS) -S $(NO_EBX) $*-no-stubs.c -o $*-no-ebx.s
 
 %-no-ebx.s:	%-no-stubs.cc 
-	$(CXX) $(OPT) -S $(NO_EBX) $*-no-stubs.cc -o $*-no-ebx.s
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -S $(NO_EBX) $*-no-stubs.cc -o $*-no-ebx.s
 
 %-raw:	%-no-stubs-ebx.s libc-no-stubs.o outside.c
-	$(CC) $(OPT) $*-no-stubs-ebx.s libc-no-stubs.o outside.c -o $*-raw -lm
+	$(CC) $(CFLAGS) $*-no-stubs-ebx.s libc-no-stubs.o outside.c -o $*-raw -lm
 
 %-noebx:	%-no-ebx.s libc-no-stubs.o outside.c
-	$(CC) $(OPT) $*-no-ebx.s libc-no-stubs.o outside.c -o $*-noebx -lm
+	$(CC) $(CFLAGS) $*-no-ebx.s libc-no-stubs.o outside.c -o $*-noebx -lm
 
 %-pad.s:	%-no-stubs-ebx.s rewrite.pl
 	$(REWRITE) -padonly $*-no-stubs-ebx.s >$*-pad.s

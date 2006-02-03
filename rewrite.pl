@@ -672,6 +672,10 @@ while (<INPUT>) {
 	$forward_eflags_live = 1;
     } elsif (/^\t(j$cond|set$cond|jmp|call|ret)\t/) {
 	$forward_eflags_live = 0;
+    } elsif (/^\tsbbl\t%(\w+), %(\w+)/ and $1 eq $2) {
+	# cmpl op1, op2; sbbl %out,%out 
+	# idiom for "%out = ((op1 >= op2) ? 0 : -1)" used by GCC 4
+	$forward_eflags_live = 0;
     }
     #print "# <$.>\n" if ($. % 10) == 0;
 }

@@ -285,13 +285,14 @@ REPLACEMENT int dup(int oldfd) {
     return ret;
 }
 
-REPLACEMENT int execl(const char *path, ...) {
+REPLACEMENT int execl(const char *path, const char *arg0,...) {
     va_list ap;
-    char *argv[256]; /* should really be dynamically allocated */
+    const char *argv[256]; /* should really be dynamically allocated */
     int i = 0, ret;
     char *arg;
 
-    va_start(ap, path);
+    argv[i++] = arg0;
+    va_start(ap, arg0);
     while ((arg = va_arg(ap, char *))) {
 	argv[i++] = arg;
 	if (i > 250) {
@@ -302,18 +303,18 @@ REPLACEMENT int execl(const char *path, ...) {
     argv[i] = 0;
     va_end(ap);
     
-    ret = outside_execv(path, argv);
+    ret = outside_execv(path, (char *const *)argv);
     refresh_errno();
     return ret;
 }
 
-REPLACEMENT int execlp(const char *file, ...) {
+REPLACEMENT int execlp(const char *file, const char *arg, ...) {
     myabort();
     errno = ENOSYS;
     return -1;
 }
 
-REPLACEMENT int execle(const char *path, ...) {
+REPLACEMENT int execle(const char *path, const char *arg, ...) {
     myabort();
     errno = ENOSYS;
     return -1;
@@ -873,7 +874,8 @@ REPLACEMENT void setbuf(FILE *stream, char *buf) {
 
 REPLACEMENT FILE *tmpfile(void) {
     static int count = 0;
-    char filename[] = "/tmp/temp0000";
+    char filename[14];
+    strcpy(filename, "/tmp/temp0000");
     filename[12] =  count         % 10;
     filename[11] = (count / 10)   % 10;
     filename[10] = (count / 100)  % 10;
