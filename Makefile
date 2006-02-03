@@ -1,7 +1,4 @@
-SECTION:=--section-start .text=0x90000000 --section-start .data=0x40000000
-#SECTION:=--section-start .text=0x10000000 --section-start .data=0x20000000
-
-VERSION:=0.2
+VERSION:=0.4
 
 OPT:=-O3 -ffast-math
 DEBUG:=-g
@@ -12,11 +9,33 @@ TFF:=./topformflat
 NO_EBX := --fixed-ebx
 NO_SCHD := -fno-schedule-insns2
 
-.PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
+VERIFY_CFLAGS := -I../../libdisasm_0.21-pre2/libdisasm -DVERIFY
+VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
+# VERIFY_CFLAGS := 
+# VERIFY_LDFLAGS :=
 
-loader:	loader.c wrappers.h sizes.h high-link.x
-	$(CC) -O2 -Wall -DVERIFY -g -static loader.c libdisasm.a -lelf -lm -Wl,-T -Wl,high-link.x -o loader
-	@#$(CC) -Wall -g loader.c -lelf -lm -o loader
+SIZE ?= classic
+REWRITE := perl rewrite.pl -size-$(SIZE)
+VERIFY_PL := perl verify.pl -size-$(SIZE)
+SECTION := $(shell perl -Msizes -e 'sizes::write_ld_flags "$(SIZE)"')
+
+# .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
+
+all: loader-large loader-medium loader-classic
+
+loader-large:	loader.c wrappers.h sizes.h high-link.x
+	$(CC) -O2 -Wall $(VERIFY_CFLAGS) -DSFI_LARGE -g -static loader.c $(VERIFY_LDFLAGS) -lelf -lm -Wl,-T -Wl,high-link.x -o $@
+
+loader-medium:	loader.c wrappers.h sizes.h
+	$(CC) -O2 -Wall $(VERIFY_CFLAGS) -DSFI_MEDIUM -g loader.c $(VERIFY_LDFLAGS) -lelf -lm -o $@
+
+loader-classic:	loader.c wrappers.h sizes.h high-link.x
+	$(CC) -O2 -Wall $(VERIFY_CFLAGS) -DSFI_CLASSIC -g loader.c $(VERIFY_LDFLAGS) -lelf -lm -o $@
+
+clean:
+	rm -f *.o *.s *.fis *.fio *.mo *-raw *-noebx *-pad *.check *-mod.out
+	rm -f loader gen-stubs sizes.h stub-list vx32-stub-list wrappers.h
+	rm -f loader-large loader-medium loader-classic
 
 wrappers.h: gen-stubs
 stub-list: gen-stubs
@@ -60,82 +79,82 @@ gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
 # libc{,plusplus}{,-{jo,noop,pushf,no-sfi-{base,noschd,noebx,pad,{noop,pushf}{,-jo}}}}.mo 
 
 libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main libc.s >$@
+	$(REWRITE) -main libc.s >$@
 
 libc-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -nop-only libc.s >$@
+	$(REWRITE) -main -nop-only libc.s >$@
 
 libc-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -pushf-and-nop libc.s >$@
+	$(REWRITE) -main -pushf-and-nop libc.s >$@
 
 libc-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -jump-only libc.s >$@
+	$(REWRITE) -main -jump-only libc.s >$@
 
 libc-no-sfi-base.fis:	libc-ebx-schd.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -no-rodata-only libc-ebx-schd.s >$@
+	$(REWRITE) -main -no-rodata-only libc-ebx-schd.s >$@
 
 libc-no-sfi-noschd.fis:	libc-ebx.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -no-rodata-only libc-ebx.s >$@
+	$(REWRITE) -main -no-rodata-only libc-ebx.s >$@
 
 libc-no-sfi-noebx.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -no-rodata-only libc.s >$@
+	$(REWRITE) -main -no-rodata-only libc.s >$@
 
 libc-no-sfi-pad.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -no-sand libc.s >$@
+	$(REWRITE) -main -no-sand libc.s >$@
 
 libc-no-sfi-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -nop-only libc.s >$@
+	$(REWRITE) -main -nop-only libc.s >$@
 
 libc-no-sfi-noop-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -nop-only -jump-only libc.s >$@
+	$(REWRITE) -main -nop-only -jump-only libc.s >$@
 
 libc-no-sfi-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -pushf-and-nop libc.s >$@
+	$(REWRITE) -main -pushf-and-nop libc.s >$@
 
 libc-no-sfi-pushf-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -main -pushf-and-nop -jump-only libc.s >$@
+	$(REWRITE) -main -pushf-and-nop -jump-only libc.s >$@
 
 libc-no-stubs.o:	libc.c libc.h
 	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
 
 libcplusplus-no-sfi-base.fis:	libcplusplus-ebx-schd.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -no-rodata-only libcplusplus-ebx-schd.s >$@
+	$(REWRITE) -no-rodata-only libcplusplus-ebx-schd.s >$@
 
 libcplusplus-no-sfi-noschd.fis:	libcplusplus-ebx.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -no-rodata-only libcplusplus-ebx.s >$@
+	$(REWRITE) -no-rodata-only libcplusplus-ebx.s >$@
 
 libcplusplus-no-sfi-noebx.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -no-rodata-only libcplusplus.s >$@
+	$(REWRITE) -no-rodata-only libcplusplus.s >$@
 
 libcplusplus-no-sfi-pad.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -no-sand libcplusplus.s >$@
+	$(REWRITE) -no-sand libcplusplus.s >$@
 
 libcplusplus-no-sfi-noop.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -nop-only libcplusplus.s >$@
+	$(REWRITE) -nop-only libcplusplus.s >$@
 
 libcplusplus-no-sfi-noop-jo.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -nop-only -jump-only libcplusplus.s >$@
+	$(REWRITE) -nop-only -jump-only libcplusplus.s >$@
 
 libcplusplus-no-sfi-pushf.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -pushf-and-nop libcplusplus.s >$@
+	$(REWRITE) -pushf-and-nop libcplusplus.s >$@
 
 libcplusplus-no-sfi-pushf-jo.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	perl rewrite.pl -pushf-and-nop -jump-only libcplusplus.s >$@
+	$(REWRITE) -pushf-and-nop -jump-only libcplusplus.s >$@
 
 %-nstr.s: %.s rewrite-stringops.pl
 	perl rewrite-stringops.pl $*.s >$@
 
 %.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl $*-nstr.s >$@
+	$(REWRITE) $*-nstr.s >$@
 
 %-noop.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -nop-only $*-nstr.s >$@
+	$(REWRITE) -nop-only $*-nstr.s >$@
 
 %-pushf.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -pushf-and-nop $*-nstr.s >$@
+	$(REWRITE) -pushf-and-nop $*-nstr.s >$@
 
 %-jo.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	perl rewrite.pl -jump-only $*-nstr.s >$@
+	$(REWRITE) -jump-only $*-nstr.s >$@
 
 %.mo:	%.fis
 	$(AS) $*.fis -o $@
@@ -162,7 +181,7 @@ crtend.o: crtend.S
 	ld $(SECTION) libc.mo $*.mo -o $@
 
 %.check: %.fio verify.pl x86_common.pm sizes.pm
-	objdump -d $*.fio | perl verify.pl 2>&1 | tee $*.check
+	objdump -d $*.fio | $(VERIFY_PL) 2>&1 | tee $*.check
 
 %-no-stubs-ebx.s:	%-no-stubs.c
 	$(CC) $(OPT) -S $*-no-stubs.c -o $*-no-stubs-ebx.s
@@ -183,13 +202,13 @@ crtend.o: crtend.S
 	$(CC) $(OPT) $*-no-ebx.s libc-no-stubs.o outside.c -o $*-noebx -lm
 
 %-pad.s:	%-no-stubs-ebx.s rewrite.pl
-	perl rewrite.pl -padonly $*-no-stubs-ebx.s >$*-pad.s
+	$(REWRITE) -padonly $*-no-stubs-ebx.s >$*-pad.s
 
 %-pad:	%-pad.s libc-no-stubs.o outside.c
 	$(CC) $*-pad.s libc-no-stubs.o outside.c -o $*-pad -lm
 
 %-pad-noebx.s:	%-no-ebx.s rewrite.pl
-	perl rewrite.pl -padonly $*-no-ebx.s >$*-pad-noebx.s
+	$(REWRITE) -padonly $*-no-ebx.s >$*-pad-noebx.s
 
 %-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
 	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm

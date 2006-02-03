@@ -12,21 +12,6 @@ my $do_align = 1;
 my $nop_only = 0;
 my $pushf_and_nop = 0;
 
-my $DATA_MASK = sprintf '$0x%08x', $data_mask;
-my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
-
-my $DATA_ANTI_MASK = sprintf '$0x%08x', ~$data_mask;
-my $JUMP_ANTI_MASK = sprintf '$0x%08x', ~$jump_mask;
-
-my($DATA_START, $CODE_START);
-if ($is_kernel) {
-    $DATA_START = '$data_sandbox_start';
-    $CODE_START = '$code_sandbox_start';
-} else {
-    $DATA_START = sprintf '$0x%08x', $data_start;
-    $CODE_START = sprintf '$0x%08x', $code_start;
-}
-
 my $is_main = 0;
 my $stubs_list;
 if (grep($_ eq "-main", @ARGV)) {
@@ -58,6 +43,28 @@ if (grep($_ eq "-padonly", @ARGV)) {
     $nop_only = 1;
     $pushf_and_nop = 1;
     @ARGV = grep($_ ne "-pushf-and-nop", @ARGV);
+}
+
+for my $size (@allowed_sizes) {
+    if (grep($_ eq "-size-$size", @ARGV)) {
+	compute_sizes($size);
+	@ARGV = grep($_ ne "-size-$size", @ARGV);
+    }
+}
+
+my $DATA_MASK = sprintf '$0x%08x', $data_mask;
+my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
+
+my $DATA_ANTI_MASK = sprintf '$0x%08x', ~$data_mask;
+my $JUMP_ANTI_MASK = sprintf '$0x%08x', ~$jump_mask;
+
+my($DATA_START, $CODE_START);
+if ($is_kernel) {
+    $DATA_START = '$data_sandbox_start';
+    $CODE_START = '$code_sandbox_start';
+} else {
+    $DATA_START = sprintf '$0x%08x', $data_start;
+    $CODE_START = sprintf '$0x%08x', $code_start;
 }
 
 my $DO_AND = $do_sandbox && ($style eq "and" || $style eq "andor");

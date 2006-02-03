@@ -1014,10 +1014,12 @@ malloc(nbytes)
                 return (NULL);
         /* remove from linked list */
 #ifndef NO_STUBS
+#ifdef DATA_START
         if (*((int*)p) != 0 &&
 	    (*((unsigned*)p) < DATA_START ||
 	     *((unsigned*)p) >= (unsigned)DATA_START+DATA_SIZE))
             printf("Corrupt malloc ptr 0x%x at %p\n",*((int*)p),p);
+#endif
 #else
         /*if (*((int*)p) != 0 &&
 	    (*((int*)p) < 0x08000000 || *((int*)p) >= 0x09000000))

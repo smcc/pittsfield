@@ -28,7 +28,7 @@ core
 # CVS default ignores end
 *.out *.s *.fis *.fio *.check
 *-raw *-noebx *-pad *-pad-noebx
-loader
+loader-large loader-medium loader-classic
 gen-stubs
 sizes.h
 stub-list

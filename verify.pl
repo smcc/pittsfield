@@ -4,21 +4,28 @@ use x86_common;
 
 use sizes;
 
+for my $size (@allowed_sizes) {
+    if (grep($_ eq "-size-$size", @ARGV)) {
+	compute_sizes($size);
+	@ARGV = grep($_ ne "-size-$size", @ARGV);
+    }
+}
+
 my $DATA_MASK = sprintf '$0x%08x', $data_mask;
 my $JUMP_MASK = sprintf '$0x%08x', $jump_mask;
 my $DATA_START = sprintf '$0x%08x', $data_start;
 my $CODE_START = sprintf '$0x%08x', $code_start;
 
-sub USE_ESP         () { 1 << 0 }
-sub IJUMP           () { 1 << 1 }
-sub IWRITE          () { 1 << 2 }
-sub IREAD           () { 1 << 3 }
-sub USE_EBP         () { 1 << 4 }
-sub CHANGE_EBP      () { 1 << 5 }
-sub EBX_DATA_SAFE   () { 1 << 6 }
-sub EBX_CODE_SAFE   () { 1 << 7 }
-sub JUMP            () { 1 << 8 }
-sub EBP_DATA_SAFE   () { 1 << 9 }
+sub USE_ESP         () { 1 <<  0 }
+sub IJUMP           () { 1 <<  1 }
+sub IWRITE          () { 1 <<  2 }
+sub IREAD           () { 1 <<  3 }
+sub USE_EBP         () { 1 <<  4 }
+sub CHANGE_EBP      () { 1 <<  5 }
+sub EBX_DATA_SAFE   () { 1 <<  6 }
+sub EBX_CODE_SAFE   () { 1 <<  7 }
+sub JUMP            () { 1 <<  8 }
+sub EBP_DATA_SAFE   () { 1 <<  9 }
 sub CHANGE_ESP      () { 1 << 10 }
 sub BUMP_ESP        () { 1 << 11 }
 sub STACK_TOP_SAFE  () { 1 << 12 }
