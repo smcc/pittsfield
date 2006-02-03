@@ -6744,9 +6744,9 @@ IntNative old_main ( IntNative argc, Char *argv[] )
 void init_wrappers(void);
 #endif
 
-int main(void) {
-  int argc = 3;
-  char *argv[] = {"bzip2", "-vv", "/tmp/input", 0};
+int main(int argc, char **argv) {
+  /* int argc = 3;
+     char *argv[] = {"bzip2", "-vv", "/tmp/input", 0}; */
 #ifdef NO_STUBS
   init_wrappers();
 #endif

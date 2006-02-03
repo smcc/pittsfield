@@ -203,7 +203,6 @@
  * The target dependent functions should be defined in tailor.c.
  */
 
-/* $Id: tailor.h,v 0.18 1993/06/14 19:32:20 jloup Exp $ */
 
 #if defined(__MSDOS__) && !defined(MSDOS)
 #  define MSDOS
@@ -663,10 +662,6 @@ extern int yesno OF((void));
 #define zdecode
 
 
-#ifdef RCSID
-static char rcsid[] = "$Id: bits.c,v 0.9 1993/06/11 10:16:58 jloup Exp $";
-#endif
-
 /* ===========================================================================
  * Local data used by the "bit string" routines.
  */
@@ -810,9 +805,6 @@ void copy_block(buf, len, header)
 /* crypt.c (dummy version) -- do not perform encryption
  * Hardly worth copyrighting :-)
  */
-#ifdef RCSID
-static char rcsid[] = "$Id: crypt.c,v 0.6 1993/03/22 09:48:47 jloup Exp $";
-#endif
 /* deflate.c -- compress data using the deflation algorithm
  * Copyright (C) 1992-1993 Jean-loup Gailly
  * This is free software; you can redistribute it and/or modify it under the
@@ -916,10 +908,6 @@ extern int block_mode;   /* block compress mode -C compatible with 2.0 */
 extern int lzw    OF((int in, int out));
 extern int unlzw  OF((int in, int out));
 
-
-#ifdef RCSID
-static char rcsid[] = "$Id: deflate.c,v 0.15 1993/06/24 10:53:53 jloup Exp $";
-#endif
 
 /* ===========================================================================
  * Configuration parameters
@@ -2842,10 +2830,6 @@ static char  *license_msg[] = {
  * For the meaning of all compilation flags, see comments in Makefile.in.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: gzip.c,v 0.24 1993/06/24 10:52:07 jloup Exp $";
-#endif
-
 /* revision.h -- define the version number
  * Copyright (C) 1998, 1999, 2001, 2002 Free Software Foundation, Inc.
  * Copyright (C) 1992-1993 Jean-loup Gailly.
@@ -2860,8 +2844,6 @@ static char rcsid[] = "$Id: gzip.c,v 0.24 1993/06/24 10:52:07 jloup Exp $";
 #ifdef LZW
 #  undef LZW
 #endif
-
-/* $Id: revision.h,v 0.25 1993/06/24 08:29:52 jloup Exp $ */
 
 
 		/* configuration */
@@ -4709,10 +4691,6 @@ RETSIGTYPE abort_gzip_signal()
       the two sets of lengths.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: inflate.c,v 0.14 1993/06/10 13:27:04 jloup Exp $";
-#endif
-
 #define slide window
 
 /* Huffman code lookup table entry--this entry is four bytes for machines
@@ -5571,10 +5549,6 @@ int inflate()
  * This is a dummy version avoiding patent problems.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: lzw.c,v 0.9 1993/06/10 13:27:31 jloup Exp $";
-#endif
-
 static int msg_done = 0;
 
 /* Compress in to out with lzw method. */
@@ -5644,10 +5618,6 @@ int lzw(in, out)
  *          byte. Returns the total compressed length for the file so
  *          far.
  * */
-
-#ifdef RCSID
-static char rcsid[] = "$Id: trees.c,v 0.12 1993/06/10 13:27:54 jloup Exp $";
-#endif
 
 /* ===========================================================================
  * Constants
@@ -6664,10 +6634,6 @@ local void set_file_type()
  * written by Haruhiko Okumura.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: unlzh.c,v 1.2 1993/06/24 10:59:01 jloup Exp $";
-#endif
-
 /* decode.c */
 
 local unsigned  decode  OF((unsigned count, uch buffer[]));
@@ -7063,10 +7029,6 @@ int unlzh(in, out)
  * to accommodate in-memory decompression.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: unlzw.c,v 0.15 1993/06/10 13:28:35 jloup Exp $";
-#endif
-
 typedef	unsigned char	char_type;
 typedef          long   code_int;
 typedef unsigned long 	count_int;
@@ -7423,10 +7385,6 @@ int unlzw(in, out)
  * terms of the GNU General Public License, see the file COPYING.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: unpack.c,v 1.4 1993/06/11 19:25:36 jloup Exp $";
-#endif
-
 #define MIN(a,b) ((a) <= (b) ? (a) : (b))
 /* The arguments must not have side effects. */
 
@@ -7666,10 +7624,6 @@ int unpack(in, out)
    either deflated or stored.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: unzip.c,v 0.13 1993/06/10 13:29:00 jloup Exp $";
-#endif
-
 /* PKZIP header definitions */
 #define LOCSIG 0x04034b50L      /* four-byte lead-in (lsb first) */
 #define LOCFLG 6                /* offset of bit flag */
@@ -7856,10 +7810,6 @@ int unzip(in, out)
  * This is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License, see the file COPYING.
  */
-
-#ifdef RCSID
-static char rcsid[] = "$Id: util.c,v 0.15 1993/06/15 09:04:13 jloup Exp $";
-#endif
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
@@ -8379,10 +8329,6 @@ yesno ()
  * terms of the GNU General Public License, see the file COPYING.
  */
 
-#ifdef RCSID
-static char rcsid[] = "$Id: zip.c,v 0.17 1993/06/10 13:29:25 jloup Exp $";
-#endif
-
 local ulg crc;       /* crc on uncompressed file data */
 off_t header_bytes;   /* number of bytes in gzip header */
 
@@ -8539,9 +8485,9 @@ getopt_long_only (argc, argv, options, long_options, opt_index)
 void init_wrappers(void);
 #endif
 
-int main(void) {
-  int argc = 3;
-  char *argv[] = {"gzip", "-vf", "/tmp/input", 0};
+int main(int argc, char **argv) {
+  /* int argc = 3;
+     char *argv[] = {"gzip", "-vf", "/tmp/input", 0}; */
 #ifdef NO_STUBS
   init_wrappers();
 #endif

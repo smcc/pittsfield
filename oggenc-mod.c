@@ -8,24 +8,6 @@
  * Portions from Vorbize, (c) Kenneth Arnold <kcarnold@yahoo.com>
  * and libvorbis examples, (c) Monty <monty@xiph.org>
  */
-#if 0
-#include <alloca.h>
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <locale.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
-#endif
 
 #include "libc.h"
 
@@ -90,7 +72,6 @@ extern int _getopt_internal (int ___argc, char *const *___argv,
  ********************************************************************
 
  function: libvorbis codec headers
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -109,7 +90,6 @@ extern int _getopt_internal (int ___argc, char *const *___argv,
  ********************************************************************
 
  function: toplevel libogg include
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 #define _OGG_H
@@ -127,7 +107,6 @@ extern int _getopt_internal (int ___argc, char *const *___argv,
  ********************************************************************
 
  function: #ifdef jail to whip a few platforms into the UNIX ideal.
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 #define _OS_TYPES_H
@@ -2507,7 +2486,6 @@ void clear_downmix(oe_enc_opt *opt) {
  ********************************************************************
 
  function: vorbis encode-engine setup
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4501,7 +4479,6 @@ getopt_long_only (argc, argv, options, long_options, opt_index)
  ********************************************************************
 
  function: simple programmatic interface for encoder mode setup
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4518,7 +4495,6 @@ getopt_long_only (argc, argv, options, long_options, opt_index)
  ********************************************************************
 
  function: libvorbis codec headers
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4537,7 +4513,6 @@ getopt_long_only (argc, argv, options, long_options, opt_index)
  ********************************************************************
 
  function: PCM data envelope analysis and manipulation
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4556,7 +4531,6 @@ getopt_long_only (argc, argv, options, long_options, opt_index)
  ********************************************************************
 
  function: modified discrete cosine transform prototypes
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4676,7 +4650,6 @@ extern int  _ve_envelope_mark(vorbis_dsp_state *v);
  ********************************************************************
 
  function: basic shared codebook operations
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4861,7 +4834,6 @@ typedef void vorbis_info_mapping;
  ********************************************************************
 
  function: random psychoacoustics (not including preecho)
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4880,7 +4852,6 @@ typedef void vorbis_info_mapping;
  ********************************************************************
 
  function: fft transform
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -4912,7 +4883,6 @@ extern void drft_clear(drft_lookup *l);
 
  function: libvorbis backend and mapping structures; needed for 
            static mode headers
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -5198,7 +5168,6 @@ extern int **_vp_quantize_couple_sort(vorbis_block *vb,
  ********************************************************************
 
  function: bitrate tracking and management
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -5218,7 +5187,6 @@ extern int **_vp_quantize_couple_sort(vorbis_block *vb,
  ********************************************************************
 
  function: #ifdef jail to whip a few platforms into the UNIX ideal.
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -5235,7 +5203,6 @@ extern int **_vp_quantize_couple_sort(vorbis_block *vb,
  ********************************************************************
 
  function: miscellaneous prototypes
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -5459,7 +5426,6 @@ typedef struct private_state {
  ********************************************************************
 
  function: highlevel encoder setup struct seperated out for vorbisenc clarity
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -5683,7 +5649,6 @@ static vorbis_info_mapping0 _map_nominal[2]={
  ********************************************************************
 
  function: toplevel settings for 44.1/48kHz
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -5700,7 +5665,6 @@ static vorbis_info_mapping0 _map_nominal[2]={
  ********************************************************************
 
  function: key floor settings
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 /********************************************************************
@@ -5716,7 +5680,6 @@ static vorbis_info_mapping0 _map_nominal[2]={
  ********************************************************************
 
  function: static codebooks autogenerated by huff/huffbuld
- last modified: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -7375,7 +7338,6 @@ static vorbis_info_floor1 _floor[10]={
  ********************************************************************
 
  function: toplevel residue templates for 32/44.1/48kHz
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -7392,7 +7354,6 @@ static vorbis_info_floor1 _floor[10]={
  ********************************************************************
 
  function: static codebooks autogenerated by huff/huffbuld
- last modified: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -26705,7 +26666,6 @@ static vorbis_mapping_template _mapres_template_44_stereo[]={
  ********************************************************************
 
  function: key psychoacoustic settings for 44.1/48kHz
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -27393,7 +27353,6 @@ ve_setup_data_template ve_setup_44_stereo_low={
  ********************************************************************
 
  function: toplevel settings for 44.1/48kHz uncoupled modes
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -27410,7 +27369,6 @@ ve_setup_data_template ve_setup_44_stereo_low={
  ********************************************************************
 
  function: toplevel residue templates for 32/44.1/48kHz uncoupled
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -27427,7 +27385,6 @@ ve_setup_data_template ve_setup_44_stereo_low={
  ********************************************************************
 
  function: static codebooks autogenerated by huff/huffbuld
- last modified: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -38721,7 +38678,6 @@ ve_setup_data_template ve_setup_44_uncoupled_low={
  ********************************************************************
 
  function: toplevel settings for 32kHz
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -38968,7 +38924,6 @@ ve_setup_data_template ve_setup_32_uncoupled_low={
  ********************************************************************
 
  function: 8kHz settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -38985,7 +38940,6 @@ ve_setup_data_template ve_setup_32_uncoupled_low={
  ********************************************************************
 
  function: 8kHz psychoacoustic settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39087,7 +39041,6 @@ static int _psy_ath_abs_8[3]={
  ********************************************************************
 
  function: toplevel residue templates 8/11kHz
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39309,7 +39262,6 @@ ve_setup_data_template ve_setup_8_uncoupled={
  ********************************************************************
 
  function: 11kHz settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39326,7 +39278,6 @@ ve_setup_data_template ve_setup_8_uncoupled={
  ********************************************************************
 
  function: 11kHz settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39499,7 +39450,6 @@ ve_setup_data_template ve_setup_11_uncoupled={
  ********************************************************************
 
  function: 16kHz settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39516,7 +39466,6 @@ ve_setup_data_template ve_setup_11_uncoupled={
  ********************************************************************
 
  function: 16kHz settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39643,7 +39592,6 @@ static int _psy_ath_abs_16[4]={
  ********************************************************************
 
  function: toplevel residue templates 16/22kHz
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -39937,7 +39885,6 @@ ve_setup_data_template ve_setup_16_uncoupled={
  ********************************************************************
 
  function: 22kHz settings 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -40066,7 +40013,6 @@ ve_setup_data_template ve_setup_22_uncoupled={
  ********************************************************************
 
  function: catch-all toplevel settings for q modes only
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -41369,7 +41315,6 @@ int vorbis_encode_ctl(vorbis_info *vi,int number,void *arg){
  ********************************************************************
 
  function: stdio-based convenience library for opening/seeking/decoding
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -41386,7 +41331,6 @@ int vorbis_encode_ctl(vorbis_info *vi,int number,void *arg){
  ********************************************************************
 
  function: stdio-based convenience library for opening/seeking/decoding
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -43466,7 +43410,6 @@ int ov_time_seek_page_lap(OggVorbis_File *vf,double pos){
  ********************************************************************
 
  function: maintain the info structure, info <-> header packets
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -43486,7 +43429,6 @@ int ov_time_seek_page_lap(OggVorbis_File *vf,double pos){
  ********************************************************************
 
  function: registry for time, floor, res backends and channel mappings
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -43516,7 +43458,6 @@ extern vorbis_func_mapping   *_mapping_P[];
  ********************************************************************
 
  function: window functions
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -44111,7 +44052,6 @@ double vorbis_granule_time(vorbis_dsp_state *v,ogg_int64_t granulepos){
  ********************************************************************
 
  function: PCM data vector blocking, windowing and dis/reassembly
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  Handle windowing, overlap-add, etc of the PCM vectors.  This is made
  more amusing by Vorbis' current two allowed block sizes.
@@ -44131,7 +44071,6 @@ double vorbis_granule_time(vorbis_dsp_state *v,ogg_int64_t granulepos){
  ********************************************************************
 
   function: LPC low level routines
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -45085,7 +45024,6 @@ float *vorbis_window(vorbis_dsp_state *v,int W){
  ********************************************************************
 
  function: single-block PCM analysis mode dispatch
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -45102,7 +45040,6 @@ float *vorbis_window(vorbis_dsp_state *v,int W){
  ********************************************************************
 
  function: linear scale -> dB, Bark and Mel scales
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -45263,7 +45200,6 @@ void _analysis_output(char *base,int i,float *v,int n,int bark,int dB,
  ********************************************************************
 
  function: bitrate tracking and management
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -45783,7 +45719,6 @@ int vorbis_bitrate_flushpacket(vorbis_dsp_state *vd,ogg_packet *op){
  ********************************************************************
 
  function: single-block PCM synthesis
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -45945,7 +45880,6 @@ int vorbis_synthesis_halfrate_p(vorbis_info *vi){
  ********************************************************************
 
  function: basic shared codebook operations
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -46534,7 +46468,6 @@ long vorbis_book_codelen(codebook *book,int entry){
  ********************************************************************
 
  function: basic codebook pack/unpack/code/decode operations
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -46992,7 +46925,6 @@ long vorbis_book_decodevv_add(codebook *book,float **a,long offset,int ch,
  ********************************************************************
 
  function: registry for time, floor, res backends and channel mappings
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -47035,7 +46967,6 @@ vorbis_func_mapping   *_mapping_P[]={
 
  function: normalized modified discrete cosine transform
            power of two length transform only [64 <= n ]
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  Original algorithm adapted long ago from _The use of multirate filter
  banks for coding of high quality digital audio_, by T. Sporer,
@@ -47589,7 +47520,6 @@ void mdct_forward(mdct_lookup *init, DATA_TYPE *in, DATA_TYPE *out){
  ********************************************************************
 
  function: psychoacoustics not including preecho
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -47606,7 +47536,6 @@ void mdct_forward(mdct_lookup *init, DATA_TYPE *in, DATA_TYPE *out){
  ********************************************************************
 
  function: masking curve data for psychoacoustics
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -49505,7 +49434,6 @@ void _vp_couple(int blobno,
  ********************************************************************
 
  function: *unnormalized* fft transform
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -50755,7 +50683,6 @@ void drft_clear(drft_lookup *l){
  ********************************************************************
 
  function: PCM data envelope analysis 
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -51118,7 +51045,6 @@ void _ve_envelope_shift(envelope_lookup *e,long shift){
  ********************************************************************
 
   function: LPC low level routines
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -51254,7 +51180,6 @@ void vorbis_lpc_predict(float *coeff,float *prime,int m,
  ********************************************************************
 
  function: window functions
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -53386,7 +53311,6 @@ void _vorbis_apply_window(float *d,int *winno,long *blocksizes,
  ********************************************************************
 
  function: floor backend 0 implementation
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -53403,7 +53327,6 @@ void _vorbis_apply_window(float *d,int *winno,long *blocksizes,
  ********************************************************************
 
   function: LSP (also called LSF) conversion routines
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -53616,7 +53539,6 @@ vorbis_func_floor floor0_exportbundle={
  ********************************************************************
 
   function: LSP (also called LSF) conversion routines
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
   The LSP generation code is taken (with minimal modification and a
   few bugfixes) from "On the Computation of the LSP Frequencies" by
@@ -53650,7 +53572,6 @@ vorbis_func_floor floor0_exportbundle={
  ********************************************************************
 
   function: lookup based functions
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -53694,7 +53615,6 @@ extern float vorbis_fromdBlook_i(long a);
  ********************************************************************
 
   function: lookup based functions
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -53711,7 +53631,6 @@ extern float vorbis_fromdBlook_i(long a);
  ********************************************************************
 
   function: lookup data; generated by lookups.pl; edit there
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -54359,7 +54278,6 @@ int vorbis_lpc_to_lsp(float *lpc,float *lsp,int m){
  ********************************************************************
 
  function: floor backend 1 implementation
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -55424,7 +55342,6 @@ vorbis_func_floor floor1_exportbundle={
  ********************************************************************
 
  function: residue backend 0, 1 and 2 implementation
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -56306,7 +56223,6 @@ vorbis_func_residue residue2_exportbundle={
  ********************************************************************
 
  function: channel mapping 0 implementation
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -57029,7 +56945,6 @@ vorbis_func_mapping mapping0_exportbundle={
  ********************************************************************
 
   function: packing variable sized words into an octet stream
-  last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  ********************************************************************/
 
@@ -57478,7 +57393,6 @@ unsigned char *oggpackB_get_buffer(oggpack_buffer *b){
 
  function: code raw [Vorbis] packets into framed OggSquish stream and
            decode Ogg streams back into raw packets
- last mod: $Id: oggenc-mod.c,v 1.1 2004/09/03 18:11:05 smcc Exp $
 
  note: The CRC code is directly derived from public domain code by
  Ross Williams (ross@guest.adelaide.edu.au).  See docs/framing.html
@@ -58358,15 +58272,11 @@ void ogg_packet_clear(ogg_packet *op) {
   memset(op, 0, sizeof(*op));
 }
 
-int main(void) {
-  int argc = 2;
-  char *argv[] = {"oggenc", "/tmp/jfk_1963_0626_berliner.wav", 0};
+int main(int argc, char **argv) {
+  /*  int argc = 2;
+      char *argv[] = {"oggenc", "/tmp/jfk_1963_0626_berliner.wav", 0}; */
 #ifdef NO_STUBS
   init_wrappers();
 #endif
   return old_main(argc, argv);
 }
-
-
-
-
