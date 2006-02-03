@@ -1384,10 +1384,12 @@ int main(int argc, char **argv) {
 	perror("data mmap:");
     }
 
+#if 0
 #ifndef LOADER_FIO
     fprintf(stderr, "Loader running with main at %p, malloc arena around %p\n",
 	   (void *)main, malloc(1));
 #endif    
+#endif
 
 #ifdef LOADER_FIO
     fio_name = LOADER_FIO;
