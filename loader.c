@@ -1103,6 +1103,7 @@ void verify(int code_len) {
 	    case insn_and:
 	    case insn_or: case insn_xor:
 	    case insn_mul: case insn_div:
+	    case insn_bittest:
 		break;
 	    default:
 		fail_verify_insn("Unknown (expr),reg insn", &insn,
