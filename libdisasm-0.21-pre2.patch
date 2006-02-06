@@ -1,0 +1,109 @@
+--- /tmp/libdisasm_0.21-pre2/libdisasm/ia32_opcode_tables.c	2005-05-17 22:30:03.000000000 -0400
++++ libdisasm/ia32_opcode_tables.c	2005-12-20 18:41:15.000000000 -0500
+@@ -2840,23 +2840,23 @@
+ 	{ tbl_FE, tbl_extension, 0x03, 0x07, 0x00, 0x01 },
+ 	{ tbl_FF, tbl_extension, 0x03, 0x07, 0x00, 0x06 },
+ 	/* 40 */
+-	{ tbl_D8, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_D8, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	{ tbl_D8C0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+-	{ tbl_D9, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_D9, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	{ tbl_D9C0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+-	{ tbl_DA, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_DA, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	/* 45 */
+ 	{ tbl_DAC0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+-	{ tbl_DB, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_DB, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	{ tbl_DBC0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+-	{ tbl_DC, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_DC, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	{ tbl_DCC0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+ 	/* 50 */
+-	{ tbl_DD, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_DD, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	{ tbl_DDC0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+-	{ tbl_DE, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_DE, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	{ tbl_DEC0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+-	{ tbl_DF, tbl_fpu, 0x03, 0x07, 0x00, 0xB0 },
++	{ tbl_DF, tbl_fpu, 0x03, 0x07, 0x00, 0xBF },
+ 	/* 55 */
+ 	{ tbl_DFC0, tbl_fpu_ext, 0x00, 0xFF, 0xC0, 0xFF },
+ 	{ tbl_0F0F, tbl_suffix, 0x00, 0xFF, 0x00, 0xBF }
+diff -u /tmp/libdisasm_0.21-pre2/libdisasm/opcode.dat libdisasm/opcode.dat
+--- /tmp/libdisasm_0.21-pre2/libdisasm/opcode.dat	2005-05-17 22:30:03.000000000 -0400
++++ libdisasm/opcode.dat	2006-02-02 16:33:58.000000000 -0500
+@@ -2235,7 +2235,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_D8	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU D8"
++TABLE tbl_D8	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU D8"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_fs|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fadd"	 0	 0	 0 	 0 	0
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_fs|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fmul"	 0	 0	 0 	 0 	0
+@@ -2325,7 +2325,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_D9	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU D9"
++TABLE tbl_D9	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU D9"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_fs|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fld"	 0	 0	 0 	 0 	0
+ INSN 0	INS_INVALID	 ARG_NONE	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 ""	 0	 0	 0 	 0 	0
+@@ -2415,7 +2415,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_DA	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU DA"
++TABLE tbl_DA	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU DA"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_d|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fiadd"	 0	 0	 0 	 0 	0
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_d|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fimul"	 0	 0	 0 	 0 	0
+@@ -2505,7 +2505,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_DB	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU DB"
++TABLE tbl_DB	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU DB"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_d|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fild"	 0	 0	 0 	 0 	0
+ INSN 0	INS_FPU	ADDRMETH_M|OPTYPE_d|OP_W	ARG_NONE	ARG_NONE	cpu_PENTIUM4 | isa_GP	"fisttp"	0	0	0	0	0
+@@ -2595,7 +2595,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+-TABLE tbl_DC	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU DC"
++TABLE tbl_DC	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU DC"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_fd|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fadd"	 0	 0	 0 	 0 	0
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_fd|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fmul"	 0	 0	 0 	 0 	0
+@@ -2685,7 +2685,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_DD	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU DD"
++TABLE tbl_DD	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU DD"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_fd|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fld"	 0	 0	 0 	 0 	0
+ INSN 0	INS_FPU	ADDRMETH_M|OPTYPE_q|OP_W	ARG_NONE	ARG_NONE	cpu_PENTIUM4 | isa_GP	"fisttp"	0	0	0	0	0
+@@ -2775,7 +2775,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_DE	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU DE"
++TABLE tbl_DE	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU DE"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_w|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fiadd"	 0	 0	 0 	 0 	0
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_w|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fimul"	 0	 0	 0 	 0 	0
+@@ -2865,7 +2865,7 @@
+ #+++++++++++++++++++---------------------------------++++++++++++++++++++
+ #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+-TABLE tbl_DF	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 176	"FPU DF"
++TABLE tbl_DF	tbl_fpu	shift 3	mask 7	minlim 0	maxlim 191	"FPU DF"
+ #______________________________________________________________________________
+ INSN 0	 INS_FPU	 ADDRMETH_M|OPTYPE_w|OP_W	 ARG_NONE	 ARG_NONE	 cpu_80387 | isa_FPU	 "fild"	 0	 0	 0 	 0 	0
+ INSN 0	INS_FPU	ADDRMETH_M|OPTYPE_w|OP_W	ARG_NONE	ARG_NONE	cpu_PENTIUM4 | isa_GP	"fisttp"	0	0	0	0	0
