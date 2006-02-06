@@ -42603,6 +42603,8 @@ int ov_pcm_seek_page(OggVorbis_File *vf,ogg_int64_t pos){
       ogg_page og;
       ogg_packet op;
       
+      op.granulepos = 0;
+
       /* seek */
       _seek_helper(vf,best);
       vf->pcm_offset=-1;
@@ -45050,15 +45052,10 @@ float *vorbis_window(vorbis_dsp_state *v,int W){
 #ifdef VORBIS_IEEE_FLOAT32
 
 static float unitnorm(float x){
-  ogg_uint32_t *ix=(ogg_uint32_t *)&x;
+  float *fp = &x;
+  ogg_uint32_t *ix=(ogg_uint32_t *)fp;
   *ix=(*ix&0x80000000UL)|(0x3f800000UL);
   return(x);
-}
-
-static float FABS(float *x){
-  ogg_uint32_t *ix=(ogg_uint32_t *)x;
-  *ix&=0x7fffffffUL;
-  return(*x);
 }
 
 static float todB(const float *x){

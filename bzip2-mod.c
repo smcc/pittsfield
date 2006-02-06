@@ -5403,6 +5403,7 @@ Bool uncompressStream ( FILE *zStream, FILE *stream )
    UChar   unused[BZ_MAX_UNUSED];
    Int32   nUnused;
    UChar*  unusedTmp;
+   void *  unusedPtr = 0;
 
    nUnused = 0;
    streamNo = 0;
@@ -5431,7 +5432,8 @@ Bool uncompressStream ( FILE *zStream, FILE *stream )
       }
       if (bzerr != BZ_STREAM_END) goto errhandler;
 
-      BZ2_bzReadGetUnused ( &bzerr, bzf, (void**)(&unusedTmp), &nUnused );
+      BZ2_bzReadGetUnused ( &bzerr, bzf, &unusedPtr, &nUnused );
+      unusedTmp = unusedPtr;
       if (bzerr != BZ_OK) panic ( "decompress:bzReadGetUnused" );
 
       for (i = 0; i < nUnused; i++) unused[i] = unusedTmp[i];
@@ -5517,6 +5519,7 @@ Bool testStream ( FILE *zStream )
    UChar   unused[BZ_MAX_UNUSED];
    Int32   nUnused;
    UChar*  unusedTmp;
+   void *  unusedPtr = 0;
 
    nUnused = 0;
    streamNo = 0;
@@ -5539,7 +5542,8 @@ Bool testStream ( FILE *zStream )
       }
       if (bzerr != BZ_STREAM_END) goto errhandler;
 
-      BZ2_bzReadGetUnused ( &bzerr, bzf, (void**)(&unusedTmp), &nUnused );
+      BZ2_bzReadGetUnused ( &bzerr, bzf, &unusedPtr, &nUnused );
+      unusedTmp = unusedPtr;
       if (bzerr != BZ_OK) panic ( "test:bzReadGetUnused" );
 
       for (i = 0; i < nUnused; i++) unused[i] = unusedTmp[i];
