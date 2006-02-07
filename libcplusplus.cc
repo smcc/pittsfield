@@ -1,7 +1,7 @@
 #define IS_THE_LIBRARY
 #include "libc.h"
-#include "fake-libc-inc/iostream.h"
-#include "fake-libc-inc/fstream.h"
+#include <iostream.h>
+#include <fstream.h>
 
 istream cin = ifstream(0);
 

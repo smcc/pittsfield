@@ -122,5 +122,6 @@ dist:
 	rm -rf pittsfield-$(VERSION)
 	mkdir pittsfield-$(VERSION)
 	cp -p `awk '{print $$1}' MANIFEST` pittsfield-$(VERSION)
+	perl -ni -e 'print unless /# begin no dist/ .. /# end no dist/ or /# end no dist/' pittsfield-$(VERSION)/Makefile
 	tar cvzf pittsfield-$(VERSION).tar.gz pittsfield-$(VERSION)
 # end no dist
