@@ -37,3 +37,5 @@ topformflat
 *.mo
 *-fewer-lines.c
 vx32-stub-list
+pittsfield-g++.pl
+sandbox-include
