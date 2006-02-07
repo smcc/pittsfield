@@ -41,4 +41,6 @@ extern "C" {
 	    ctor++;
 	}
     }
+
+    void __cxa_pure_virtual(void) { abort(); }
 }
