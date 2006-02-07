@@ -78,10 +78,10 @@ pittsfield-g++.pl: pittsfield-gcc.pl
 %.mo: %.cc pittsfield-g++.pl sandbox-include/.setup
 	$(SFI_CXX) $(CXXFLAGS) $(CFLAGS) -c $< -o $@
 
-%-c++.fio: %-c++.mo pittsfield-g++.pl
+%-c++.fio: %-c++.mo pittsfield-g++.pl libc.c libcplusplus.cc
 	$(SFI_CXX) $(CXXFLAGS) $< -o $@
 
-%.fio: %.mo
+%.fio: %.mo libc.c
 	$(SFI_CC) $< -o $@
 
 ifdef FEWER_LINES_HACK
