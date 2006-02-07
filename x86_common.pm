@@ -23,7 +23,7 @@ our $arithl = qr/${arith}l/;
 our $shift = qr/(?:rol|ror|rcl|rcr|shl|sal|shr|sar)/;
 our $dshift = qr/$shift(?:d)/;
 our $unary = qr/(?:pushl?|popl?|inc(?:b|w|l|)|dec(?:b|w|l|)|not|neg)/;
-our $convert = qr/(?:cwtl|cltd)/;
+our $convert = qr/(?:cwtl|cltd|cbtw)/;
 
 our $fbin = qr/(?:f(?:add|mul|divr?|subr?)(?:s|l|)p?)/;
 our $fstore = qr/(?:fi?stp?(?:s|t|l|ll|))/;
