@@ -252,10 +252,15 @@ if ($minus_c and @c_files) {
 	    $fio_file = "$fio_dir/$out_file$$.fio";
 	}
 
+	my @to_unlink;
+
 	my $libc_mo = "$temp_file-$libc_mo_name";
-	$crt0 = 1;
-	compile_file($libc_c, $libc_mo, \@c_opt, 0) unless $vx32;
-	$crt0 = 0;
+	if (!$vx32) {
+	    $crt0 = 1;
+	    compile_file($libc_c, $libc_mo, \@c_opt, 0);
+	    push @to_unlink, $libc_mo;
+	    $crt0 = 0;
+	}
 
 	if ($cplusplus_mode) {
 	    # Besides linking in our equivalent of libstdc++.a, we
@@ -263,11 +268,14 @@ if ($minus_c and @c_files) {
 	    # static constructors work.
 	    my $libcplusplus_mo = "$temp_file-$libcplusplus_mo_name";
 	    compile_file($libcplusplus_cc, $libcplusplus_mo, \@cxx_opt, 1);
+	    push @to_unlink, $libcplusplus_mo;
 
 	    my $crtbegin_o = "$temp_file-crtbegin.o";
 	    assemble_file($crtbegin_S, $crtbegin_o);
+	    push @to_unlink, $crtbegin_o;
 	    my $crtend_o = "$temp_file-crtend.o";
 	    assemble_file($crtend_S, $crtend_o);
+	    push @to_unlink, $crtend_o;
 
 	    unshift @ld_args, $crtbegin_o;
 	    push @ld_args, $crtend_o;
@@ -306,6 +314,9 @@ if ($minus_c and @c_files) {
 			    "-D$size_macro",
 			    qq/-DLOADER_FIO="$fio_file"/, $loader_c,
 			    @loader_flags);
+	}
+	for my $temp_f (@to_unlink) {
+	    unlink($temp_f);
 	}
     }
 } else {
