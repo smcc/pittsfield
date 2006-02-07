@@ -20,14 +20,13 @@ my $libcplusplus_cc = "$pittsfield_dir/libcplusplus.cc";
 my $ld = "/usr/bin/ld";
 my $fake_libc_inc = "$pittsfield_dir/sandbox-include";
 my $objdump = "/usr/bin/objdump";
-my $fio_dir = "/scratch/smcc/pittsfield-fios";
+my $fio_dir = "$temp_dir/pittsfield-fios";
 my $loader_c = "$pittsfield_dir/loader.c";
 my $highlink_x = "$pittsfield_dir/high-link.x";
 my $linkcpp_x = "$pittsfield_dir/link-c++.x";
 my $crtbegin_S = "$pittsfield_dir/crtbegin.S";
 my $crtend_S = "$pittsfield_dir/crtend.S";
-my @loader_flags = ("-static", "-lelf", "-lm",
-		    "-Wl,-T" => "-Wl,$highlink_x");
+my @loader_flags = ("-static", "-lelf", "-lm");
 my @c_opt = ("-O3");
 my @cxx_opt = ("-O3", "-fno-exceptions", "-fno-rtti");
 my $gcc = "gcc";
@@ -80,6 +79,9 @@ for my $size (@allowed_sizes) {
 	@size_flags = ("-size-$size");
 	compute_sizes($size);
 	@args = grep($_ ne "--size-$size", @args);
+	if ($size eq "large") {
+	    push @loader_flags, "-Wl,-T" => "-Wl,$highlink_x";
+	}
     }
 }
 
@@ -300,7 +302,8 @@ if ($minus_c and @c_files) {
 	    unlink($dis_file);
 	}
 	if (!$fio_only) {
-	    verbose_command($real_compiler, "-o", $out_file, "-g",
+	    verbose_command($gcc, "-o", $out_file, "-g",
+			    "-D$size_macro",
 			    qq/-DLOADER_FIO="$fio_file"/, $loader_c,
 			    @loader_flags);
 	}
