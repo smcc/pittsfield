@@ -272,12 +272,20 @@ double wrap_floor(double x) {
     return floor(x);
 }
 
+float wrap_floorf(float x) {
+    return floorf(x);
+}
+
 double wrap_sin(double x) {
     return sin(x);
 }
 
 double wrap_sqrt(double x) {
     return sqrt(x);
+}
+
+float wrap_sqrtf(float x) {
+    return sqrtf(x);
 }
 
 void wrap_abort(void) {
@@ -316,6 +324,10 @@ double wrap_exp(double x) {
     return exp(x);
 }
 
+float wrap_expf(float x) {
+    return expf(x);
+}
+
 double wrap_fabs(double x) {
     return fabs(x);
 }
@@ -330,6 +342,10 @@ double wrap_log10(double x) {
 
 double wrap_ceil(double x) {
     return ceil(x);
+}
+
+float wrap_ceilf(float x) {
+    return ceilf(x);
 }
 
 double wrap_pow(double x, double y) {
@@ -728,7 +744,8 @@ enum eff_addr_type classify_ea(x86_ea_t ea) {
     else if (ea.base.id == REGISTER_EBP &&
 	ea.index.id == 0 &&
 	(ea.disp_size <= 2 ||
-	 (ea.disp_sign && ea.disp > -32768)))
+	 (ea.disp_sign && ea.disp > -32768) ||
+	 ((unsigned)ea.disp < 32768)))
 	return EA_EBP_OFFSET;
     else if (ea.base.id == REGISTER_ESP &&
 	     ea.index.id == 0 &&
