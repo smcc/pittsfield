@@ -199,7 +199,7 @@ REPLACEMENT const char *strstr(const char *big, const char *small) {
 #endif
 
 REPLACEMENT char *strdup(const char *s) {
-    char *buf = malloc(strlen(s) + 1);
+    char *buf = (char *)malloc(strlen(s) + 1);
     if (buf)
 	strcpy(buf, s);
     return buf;
@@ -987,8 +987,7 @@ static  union overhead *nextf[NBUCKETS];
 static void morecore(int bucket);
 
 REPLACEMENT void *
-malloc(nbytes)
-        register unsigned nbytes;
+malloc(unsigned nbytes)
 {
         register union overhead *p;
         register int bucket = 0;
@@ -1038,8 +1037,7 @@ malloc(nbytes)
  * Allocate more memory to the indicated bucket.
  */
 static void
-morecore(bucket)
-        register int bucket;
+morecore(int bucket)
 {
         register union overhead *op;
         register int rnu;       /* 2^rnu bytes will be requested */
@@ -1081,21 +1079,20 @@ morecore(bucket)
         nextf[bucket] = op;
         siz = 1 << (bucket + 3);
         while (--nblks > 0) {
-                op->ov_next = (union overhead *)((void *)op + siz);
-                op = (union overhead *)((void *)op + siz);
+                op->ov_next = (union overhead *)((char *)op + siz);
+                op = (union overhead *)((char *)op + siz);
         }
 }
 
-REPLACEMENT void free(vp)
-        void *vp;
+REPLACEMENT void free(void *vp)
 {   
         register int size;
         register union overhead *op;
-	char *cp = vp;
+	char *cp = (char *)vp;
 
         if (cp == NULL)
                 return;
-        op = (union overhead *)((void *)cp - sizeof (union overhead));
+        op = (union overhead *)(cp - sizeof (union overhead));
         ASSERT(op->ov_magic == MAGIC);          /* make sure it was in use */
         if (op->ov_magic != MAGIC)
                 return;                         /* sanity */
@@ -1106,11 +1103,9 @@ REPLACEMENT void free(vp)
 }
 
 REPLACEMENT void *
-realloc(vp, nbytes)
-        void *vp; 
-        unsigned nbytes;
+realloc(void *vp, unsigned nbytes)
 {   
-        char *cp = vp;
+        char *cp = (char *)vp;
         register u_int onb;
         union overhead *op;
         char *res;
@@ -1119,7 +1114,7 @@ realloc(vp, nbytes)
 
         if (cp == NULL)
                 return (malloc(nbytes));
-        op = (union overhead *)((void *)cp - sizeof (union overhead));
+        op = (union overhead *)(cp - sizeof (union overhead));
 	ASSERT(op->ov_magic == MAGIC);
 	was_alloced++;
 	i = op->ov_index;
@@ -1128,7 +1123,7 @@ realloc(vp, nbytes)
         if (was_alloced &&
             nbytes <= onb && nbytes > (onb >> 1) - sizeof(*op) - RSLOP)
                 return(cp);
-        if ((res = malloc(nbytes)) == NULL)
+        if ((res = (char *)malloc(nbytes)) == NULL)
                 return (NULL);
         if (cp != res)                  /* common optimization */
 	    /*bcopy(cp, res, (nbytes < onb) ? nbytes : onb);*/
@@ -1186,8 +1181,8 @@ REPLACEMENT int rand(void) {
 }
 
 static void iswap(void *a, void *b, size_t size) {
-    char *x = a;
-    char *y = b;
+    char *x = (char *)a;
+    char *y = (char *)b;
     char *z = x + size;
     while (x < z) {
 	char tmp = *x;
@@ -1205,7 +1200,7 @@ void isort(void *base, size_t nmemb, size_t size,
 	   int (*compar)(const void *, const void *)) {
     size_t i;
     while (nmemb > 1) {
-	char *min = base;
+	char *min = (char *)base;
 	char *tmp = min + size;
 	for (i = 1; i < nmemb; i++) {
 	    if (compar(tmp, min) < 0)
@@ -1213,7 +1208,7 @@ void isort(void *base, size_t nmemb, size_t size,
 	    tmp += size;
 	}
 	iswap(min, base, size);
-	base += size;
+	base = (char *)base + size;
 	nmemb--;
     }
 }
@@ -1472,7 +1467,7 @@ REPLACEMENT void *bsearch(const void *key, const void *base, size_t nmemb,
 	if ((tmp = (*compar)(key, p)) < 0) {
 	    nmemb = m;
 	} else if (tmp > 0) {
-	    base = p + size;
+	    base = (char *)p + size;
 	    nmemb -= m + 1;
 	} else {
 	    return p;
