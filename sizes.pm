@@ -94,11 +94,15 @@ sub write_header {
     }
 }
 
+sub ld_flags {
+    return ("--section-start", sprintf(".text=0x%08x", $code_start),
+	    "--section-start", sprintf(".data=0x%08x", $data_start));
+}
+
 sub write_ld_flags {
     my($size) = @_;
     compute_sizes($size);
-    printf "--section-start .text=0x%08x --section-start .data=0x%08x\n",
-      $code_start, $data_start;
+    return join(" ", ld_flags());
 }
 
 1;
