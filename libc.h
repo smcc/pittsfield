@@ -78,12 +78,9 @@ typedef struct {
 
 #include "sizes.h"
 
-#ifdef NO_STUBS
-/* Hide these from outside.c, so it can get the real ones */
 #define REPLACEMENT
-#define REPLACEMENT_STATIC static
-#else
-#define REPLACEMENT
+
+#ifndef REPLACEMENT_STATIC
 #define REPLACEMENT_STATIC static
 #endif
 

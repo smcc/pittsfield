@@ -1,4 +1,5 @@
 #define NEED_STAT
+#define REPLACEMENT_STATIC
 #include "libc.h"
 #include "sizes.h"
 
@@ -7,6 +8,7 @@ FILE *stdin = &myfiles[0];
 FILE *stdout = &myfiles[1];
 FILE *stderr = &myfiles[2];
 
+#define DEFINE_INLINES
 #ifdef DEFINE_INLINES
 REPLACEMENT void *memchr(const void *s, int c, size_t n) {
     int i;
