@@ -15,7 +15,6 @@ NO_SCHD := -fno-schedule-insns2
 CC  := gcc-4.0
 CXX := g++-4.0
 
-
 VERIFY_CFLAGS := -I../../libdisasm_0.21-pre2/libdisasm -DVERIFY
 VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
 # VERIFY_CFLAGS := 
@@ -24,14 +23,16 @@ VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
 SIZE ?= classic
 REWRITE := perl rewrite.pl -size-$(SIZE)
 VERIFY_PL := perl verify.pl -size-$(SIZE)
-SECTION := $(shell perl -Msizes -e 'sizes::write_ld_flags "$(SIZE)"')
 SIZE_DEFINE := $(shell perl -Msizes -e 'compute_sizes("$(SIZE)"); print "-D$$size_macro"')
+
+SFI_CC  := perl pittsfield-gcc.pl --gcc=$(CC) --size-$(SIZE)
+SFI_CXX := perl pittsfield-g++.pl --gcc=$(CC) --g++=$(CXX) --size-$(SIZE)
 
 CFLAGS := $(DEBUG) $(OPT) $(SIZE_DEFINE)
 
 # .PRECIOUS: %.o %.s %.fis %.fio %-raw %-noebx %-pad %-pad-noebx
 
-all: loader-large loader-medium loader-classic
+all: loader-large loader-medium loader-classic hw.fio hw-c++.fio
 
 loader-large:	loader.c wrappers.h sizes.h high-link.x
 	$(CC) -O2 -Wall $(VERIFY_CFLAGS) -DSFI_LARGE -g -static loader.c $(VERIFY_LDFLAGS) -lelf -lm -Wl,-T -Wl,high-link.x -o $@
@@ -46,6 +47,8 @@ clean:
 	rm -f *.o *.s *.fis *.fio *.mo *-raw *-noebx *-pad *.check *-mod.out
 	rm -f loader gen-stubs sizes.h stub-list vx32-stub-list wrappers.h
 	rm -f loader-large loader-medium loader-classic
+	rm -rf sandbox-include
+	rm -f pittsfield-g++.pl
 
 wrappers.h: gen-stubs
 stub-list: gen-stubs
@@ -56,23 +59,30 @@ gen-stubs: stubs.h
 sizes.h: sizes.pm
 	perl -Msizes -e 'sizes::write_header' >sizes.h
 
-%.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(CFLAGS) $(NO_SCHD) $(NO_EBX) $*.c
+sandbox-include/.setup: libc-h-copies.txt stubs.h libc.h stubs.h float.h fstream.h iostream.h
+	mkdir -p sandbox-include
+	mkdir -p sandbox-include/sys
+	for f in `cat libc-h-copies.txt`; do \
+            cp libc.h sandbox-include/$$f; done
+	for f in stubs.h float.h fstream.h iostream.h; do \
+            cp $$f sandbox-include/$$f; done
+	cp stat.h sandbox-include/sys/stat.h
+	touch $@
 
-%-ebx.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(CFLAGS) $(NO_SCHD) $*.c -o $@
+pittsfield-g++.pl: pittsfield-gcc.pl
+	cp $< $@
 
-%-ebx-schd.s:	%.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(CFLAGS) $*.c -o $@
+%.mo: %.c sandbox-include/.setup
+	$(SFI_CC) $(CFLAGS) -c $< -o $@
 
-%.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) $(CXXFLAGS) -Wall -S $(CFLAGS) $(NO_SCHD) $(NO_EBX) $*.cc
+%.mo: %.cc pittsfield-g++.pl sandbox-include/.setup
+	$(SFI_CXX) $(CXXFLAGS) $(CFLAGS) -c $< -o $@
 
-%-ebx.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) $(CXXFLAGS) -Wall -S $(CFLAGS) $(NO_SCHD) $*.cc -o $@
+%-c++.fio: %-c++.mo pittsfield-g++.pl
+	$(SFI_CXX) $(CXXFLAGS) $< -o $@
 
-%-ebx-schd.s:	%.cc libc.h stub-list sizes.h
-	$(CXX) $(CXXFLAGS) -Wall -S $(CFLAGS) $*.cc -o $@
+%.fio: %.mo
+	$(SFI_CC) $< -o $@
 
 ifdef FEWER_LINES_HACK
 gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
@@ -94,143 +104,10 @@ else
 	$(CXX) $(CXXFLAGS) -DNO_STUBS -E $*.cc  >$*-no-stubs.cc
 endif
 
-# libc{,plusplus}{,-{jo,noop,pushf,no-sfi-{base,noschd,noebx,pad,{noop,pushf}{,-jo}}}}.mo 
-
-libc.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main libc.s >$@
-
-libc-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -nop-only libc.s >$@
-
-libc-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -pushf-and-nop libc.s >$@
-
-libc-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -jump-only libc.s >$@
-
-libc-no-sfi-base.fis:	libc-ebx-schd.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -no-rodata-only libc-ebx-schd.s >$@
-
-libc-no-sfi-noschd.fis:	libc-ebx.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -no-rodata-only libc-ebx.s >$@
-
-libc-no-sfi-noebx.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -no-rodata-only libc.s >$@
-
-libc-no-sfi-pad.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -no-sand libc.s >$@
-
-libc-no-sfi-noop.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -nop-only libc.s >$@
-
-libc-no-sfi-noop-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -nop-only -jump-only libc.s >$@
-
-libc-no-sfi-pushf.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -pushf-and-nop libc.s >$@
-
-libc-no-sfi-pushf-jo.fis:	libc.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -main -pushf-and-nop -jump-only libc.s >$@
-
-libc-no-stubs.o:	libc.c libc.h
-	$(CC) $(OPT) -DNO_STUBS -c $< -o $@
-
-libcplusplus-no-sfi-base.fis:	libcplusplus-ebx-schd.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -no-rodata-only libcplusplus-ebx-schd.s >$@
-
-libcplusplus-no-sfi-noschd.fis:	libcplusplus-ebx.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -no-rodata-only libcplusplus-ebx.s >$@
-
-libcplusplus-no-sfi-noebx.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -no-rodata-only libcplusplus.s >$@
-
-libcplusplus-no-sfi-pad.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -no-sand libcplusplus.s >$@
-
-libcplusplus-no-sfi-noop.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -nop-only libcplusplus.s >$@
-
-libcplusplus-no-sfi-noop-jo.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -nop-only -jump-only libcplusplus.s >$@
-
-libcplusplus-no-sfi-pushf.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -pushf-and-nop libcplusplus.s >$@
-
-libcplusplus-no-sfi-pushf-jo.fis:	libcplusplus.s rewrite.pl x86_common.pm sizes.pm
-	$(REWRITE) -pushf-and-nop -jump-only libcplusplus.s >$@
-
-%-nstr.s: %.s rewrite-stringops.pl
-	perl rewrite-stringops.pl $*.s >$@
-
-%.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) $*-nstr.s >$@
-
-%-noop.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -nop-only $*-nstr.s >$@
-
-%-pushf.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -pushf-and-nop $*-nstr.s >$@
-
-%-jo.fis:	%-nstr.s rewrite.pl x86_common.pm sizes.pm stub-list
-	$(REWRITE) -jump-only $*-nstr.s >$@
-
-%.mo:	%.fis
-	$(AS) $*.fis -o $@
-
-crtbegin.o: crtbegin.S
-	$(AS) crtbegin.S -o crtbegin.o
-
-crtend.o: crtend.S
-	$(AS) crtend.S -o crtend.o
-
-%-cpp-mod.fio:	%-cpp-mod.mo libc.mo crtbegin.o crtend.o libcplusplus.mo link-c++.x
-	ld $(SECTION) -T link-c++.x crtbegin.o libc.mo libcplusplus.mo $*-cpp-mod.mo crtend.o -o $*-cpp-mod.fio
-
-%-noop.fio:	%-noop.mo libc-noop.mo
-	ld $(SECTION) libc-noop.mo $*-noop.mo -o $@
-
-%-pushf.fio:	%-pushf.mo libc-pushf.mo
-	ld $(SECTION) libc-pushf.mo $*-pushf.mo -o $@
-
-%-jo.fio:	%-jo.mo libc-jo.mo
-	ld $(SECTION) libc-jo.mo $*-jo.mo -o $@
-
-%.fio:	%.mo libc.mo
-	ld $(SECTION) libc.mo $*.mo -o $@
-
 %.check: %.fio verify.pl x86_common.pm sizes.pm
 	objdump -d $*.fio | $(VERIFY_PL) 2>&1 | tee $*.check
 
-%-no-stubs-ebx.s:	%-no-stubs.c
-	$(CC) $(CFLAGS) -S $*-no-stubs.c -o $*-no-stubs-ebx.s
-
-%-no-stubs-ebx.s:	%-no-stubs.cc
-	$(CXX) $(CXXFLAGS) $(CFLAGS) -S $*-no-stubs.cc -o $*-no-stubs-ebx.s
-
-%-no-ebx.s:	%-no-stubs.c 
-	$(CC) $(CFLAGS) -S $(NO_EBX) $*-no-stubs.c -o $*-no-ebx.s
-
-%-no-ebx.s:	%-no-stubs.cc 
-	$(CXX) $(CXXFLAGS) $(CFLAGS) -S $(NO_EBX) $*-no-stubs.cc -o $*-no-ebx.s
-
-%-raw:	%-no-stubs-ebx.s libc-no-stubs.o outside.c
-	$(CC) $(CFLAGS) $*-no-stubs-ebx.s libc-no-stubs.o outside.c -o $*-raw -lm
-
-%-noebx:	%-no-ebx.s libc-no-stubs.o outside.c
-	$(CC) $(CFLAGS) $*-no-ebx.s libc-no-stubs.o outside.c -o $*-noebx -lm
-
-%-pad.s:	%-no-stubs-ebx.s rewrite.pl
-	$(REWRITE) -padonly $*-no-stubs-ebx.s >$*-pad.s
-
-%-pad:	%-pad.s libc-no-stubs.o outside.c
-	$(CC) $*-pad.s libc-no-stubs.o outside.c -o $*-pad -lm
-
-%-pad-noebx.s:	%-no-ebx.s rewrite.pl
-	$(REWRITE) -padonly $*-no-ebx.s >$*-pad-noebx.s
-
-%-pad-noebx:	%-pad-noebx.s libc-no-stubs.o outside.c pad.pl
-	$(CC) $*-pad-noebx.s libc-no-stubs.o outside.c -o $*-pad-noebx -lm
-
+# begin no dist
 %.out:	%.fio %-noop.fio %-pushf.fio %-jo.fio %-raw %-noebx %-pad %-pad-noebx loader
 	-/usr/bin/time -f '%e %U %S'    -o $@ ./$*-raw 
 	-/usr/bin/time -f '%e %U %S' -a -o $@ ./$*-noebx 
@@ -246,3 +123,4 @@ dist:
 	mkdir pittsfield-$(VERSION)
 	cp -p `awk '{print $$1}' MANIFEST` pittsfield-$(VERSION)
 	tar cvzf pittsfield-$(VERSION).tar.gz pittsfield-$(VERSION)
+# end no dist

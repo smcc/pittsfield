@@ -4,31 +4,36 @@ use strict;
 
 # Pretend to be GCC/G++, but run PittSFIeld too.
 
+use FindBin;
+use lib "$FindBin::RealBin";
+my $pittsfield_dir = $FindBin::RealBin;
+use sizes;
+
 my $temp_dir = "/tmp";
-my $pittsfield_dir = "/afs/csail.mit.edu/u/s/smcc/sfi/pittsfield/pittsfield";
 my $rewrite = "$pittsfield_dir/rewrite.pl";
 my $rm_strops = "$pittsfield_dir/rewrite-stringops.pl";
 my $verify = "$pittsfield_dir/verify.pl";
 my $perl = "/usr/bin/perl";
 my $as = "/usr/bin/as";
-my $libc_mo = "$pittsfield_dir/libc.mo";
-my $libcplusplus_mo = "$pittsfield_dir/libcplusplus.mo";
+my $libc_c = "$pittsfield_dir/libc.c";
+my $libcplusplus_cc = "$pittsfield_dir/libcplusplus.cc";
 my $ld = "/usr/bin/ld";
-my @ld_args = ("--section-start" => ".text=0x90000000",
-	       "--section-start" => ".data=0x40000000",
-	       "-e" => "main");
-my $fake_libc_inc = "$pittsfield_dir/fake-libc-inc";
+my $fake_libc_inc = "$pittsfield_dir/sandbox-include";
 my $objdump = "/usr/bin/objdump";
 my $fio_dir = "/scratch/smcc/pittsfield-fios";
 my $loader_c = "$pittsfield_dir/loader.c";
 my $highlink_x = "$pittsfield_dir/high-link.x";
 my $linkcpp_x = "$pittsfield_dir/link-c++.x";
-my $crtbegin_o = "$pittsfield_dir/crtbegin.o";
-my $crtend_o = "$pittsfield_dir/crtend.o";
+my $crtbegin_S = "$pittsfield_dir/crtbegin.S";
+my $crtend_S = "$pittsfield_dir/crtend.S";
 my @loader_flags = ("-static", "-lelf", "-lm",
 		    "-Wl,-T" => "-Wl,$highlink_x");
+my @c_opt = ("-O3");
+my @cxx_opt = ("-O3", "-fno-exceptions", "-fno-rtti");
+my $gcc = "gcc";
+my $gxx = "g++";
 
-my $vx32_dir = "/afs/csail.mit.edu/u/s/smcc/sfi/vxa-060115/vm";
+my $vx32_dir = "<not_supported>";
 my $vx32_libc_inc = "$vx32_dir/cinc";
 my $vx32_libc_a = "$vx32_dir/clib/libc-pittsfield.a";
 my $vx32_crt0 = "$vx32_dir/clib/pittsfield/crt0.o";
@@ -69,13 +74,31 @@ sub verbose_redir_command {
 
 my @args = @ARGV;
 
-my $real_compiler;
-if ($0 =~ /gcc/) {
-    $real_compiler = "/usr/bin/gcc";
-} elsif ($0 =~ /g\+\+/) {
-    $real_compiler = "/usr/bin/g++";
-} else {
-    die "Can't figure out which real compiler to call";
+my @size_flags = ();
+for my $size (@allowed_sizes) {
+    if (grep($_ eq "--size-$size", @args)) {
+	@size_flags = ("-size-$size");
+	compute_sizes($size);
+	@args = grep($_ ne "--size-$size", @args);
+    }
+}
+
+my @ld_args = sizes::ld_flags();
+
+for my $arg (@args) {
+    if ($arg =~ /^--gcc=(.*)/) {
+	$gcc = $1;
+    } elsif ($arg =~ /^--g\+\+=(.*)/) {
+	$gxx = $1;
+    }
+}
+@args = grep(!/^--g(cc|\+\+)=/, @args);
+
+my $cplusplus_mode = 0;
+my $real_compiler = $gcc;
+if ($0 =~ /\+\+/) {
+    $cplusplus_mode = 1;
+    $real_compiler = $gxx;
 }
 
 my $minus_c = (grep($_ eq "-c", @args) > 0);
@@ -89,10 +112,16 @@ for (my $i = 0; $i < @args; $i++) {
     $minus_o_loc = $i if $args[$i] eq "-o";
 }
 
+my $fio_only = 0;
+
 my $out_file = undef;
 if (defined($minus_o_loc)) {
     $out_file = $args[$minus_o_loc + 1];
     splice(@args, $minus_o_loc, 2);
+}
+
+if ($out_file =~ /\.fio$/) {
+    $fio_only = 1;
 }
 
 my $pad_only = (grep($_ eq "--pad-only", @args) > 0);
@@ -115,25 +144,23 @@ my $vx32 = (grep($_ eq "--vx32", @args) > 0);
 my $crt0 = (grep($_ eq "--crt0", @args) > 0);
 @args = grep($_ ne "--crt0", @args);
 
-my $fio_only = (grep($_ eq "--fio-only", @args) > 0);
-@args = grep($_ ne "--fio-only", @args);
-
+my($libc_mo_name, $libcplusplus_mo_name) = ("libc.mo", "libcplusplus.mo");
 if ($no_sfi or $jump_only) {
     my $ext = "";
     $ext .= "-no-sfi-$no_sfi" if $no_sfi;
     $ext .= "-jo" if $jump_only;
-    $libc_mo = "$pittsfield_dir/libc$ext.mo";
-    $libcplusplus_mo = "$pittsfield_dir/libcplusplus$ext.mo";
+    $libc_mo_name = "libc$ext.mo";
+    $libcplusplus_mo_name = "libcplusplus$ext.mo";
 }
 
-if ($minus_c and @c_files) {
-    # Compile source to object
-    die "Can only compile one .c file at once" unless @c_files == 1;
-    my($c_file) = @c_files;
-    if (!defined $out_file) {
-	$out_file = $c_file;
-	$out_file =~ s/\.cc?/.o/;
-    }
+sub assemble_file {
+    my($s_file, $o_file) = @_;
+    verbose_command($as, $s_file, "-o", $o_file);
+}
+
+sub compile_file {
+    my($c_file, $out_file, $other_args, $cxx_mode) = @_;
+    my @args = @$other_args;
     my $basename = $c_file;
     $basename =~ s[^.*/][];
     $basename =~ s/\..*$//;
@@ -149,7 +176,7 @@ if ($minus_c and @c_files) {
 	push @args, "--fixed-ebx"
 	  unless $no_sfi eq "base" or $no_sfi eq "noschd";
     }
-    my @rewrite_flags = ();
+    my @rewrite_flags = (@size_flags);
     if ($pad_only) {
 	@rewrite_flags = ("-padonly");
     } elsif ($no_sfi eq "base" or $no_sfi eq "noschd" or $no_sfi eq "noebx") {
@@ -167,17 +194,28 @@ if ($minus_c and @c_files) {
     if ($crt0) {
 	push @rewrite_flags, ($vx32 ? "-vx32main" : "-main");
     }
-    verbose_command($real_compiler,
+    verbose_command(($cxx_mode ? $gxx : $gcc),
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
     verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
 			  "$temp_file.s", ">$temp_file-nostr.s");
     verbose_redir_command($perl, "-I$pittsfield_dir", $rewrite,
 			  @rewrite_flags, "$temp_file-nostr.s",
 			  ">$temp_file.fis");
-    verbose_command($as, "$temp_file.fis", "-o", $out_file);
+    assemble_file("$temp_file.fis", $out_file);
     unlink("$temp_file.s");
     unlink("$temp_file-nostr.s");
     unlink("$temp_file.fis");
+}
+
+if ($minus_c and @c_files) {
+    # Compile source to object
+    die "Can only compile one .c file at once" unless @c_files == 1;
+    my($c_file) = @c_files;
+    if (!defined $out_file) {
+	$out_file = $c_file;
+	$out_file =~ s/\.cc?/.o/;
+    }
+    compile_file($c_file, $out_file, [@args], $cplusplus_mode);
 } elsif (!$minus_c and !@c_files) {
     # Link objects to executable
     if (not defined $out_file) {
@@ -212,10 +250,23 @@ if ($minus_c and @c_files) {
 	    $fio_file = "$fio_dir/$out_file$$.fio";
 	}
 
-	if ($real_compiler =~ /\+\+/) {
+	my $libc_mo = "$temp_file-$libc_mo_name";
+	$crt0 = 1;
+	compile_file($libc_c, $libc_mo, \@c_opt, 0) unless $vx32;
+	$crt0 = 0;
+
+	if ($cplusplus_mode) {
 	    # Besides linking in our equivalent of libstdc++.a, we
 	    # also need to do more linker trickery to make calling
 	    # static constructors work.
+	    my $libcplusplus_mo = "$temp_file-$libcplusplus_mo_name";
+	    compile_file($libcplusplus_cc, $libcplusplus_mo, \@cxx_opt, 1);
+
+	    my $crtbegin_o = "$temp_file-crtbegin.o";
+	    assemble_file($crtbegin_S, $crtbegin_o);
+	    my $crtend_o = "$temp_file-crtend.o";
+	    assemble_file($crtend_S, $crtend_o);
+
 	    unshift @ld_args, $crtbegin_o;
 	    push @ld_args, $crtend_o;
 	    push @ld_args, $libcplusplus_mo;
@@ -233,7 +284,8 @@ if ($minus_c and @c_files) {
 	verbose_command($ld, "-o", $fio_file, @start_objs, @ld_args, @args);
 	if (!$no_sfi and !$jump_only) {
 	    verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
-	    open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify, $dis_file);
+	    open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify,
+		 @size_flags, $dis_file);
 	    my $okay = 0;
 	    while (<CHECKS>) {
 		if (/^Checks finished before /) {
