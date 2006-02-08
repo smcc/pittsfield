@@ -1,5 +1,6 @@
 #define NEED_STAT
 #define REPLACEMENT_STATIC
+#define REPLACEMENT_INLINE
 #include "libc.h"
 #include "sizes.h"
 
@@ -7,74 +8,6 @@ FILE myfiles[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 FILE *stdin = &myfiles[0];
 FILE *stdout = &myfiles[1];
 FILE *stderr = &myfiles[2];
-
-#define DEFINE_INLINES
-#ifdef DEFINE_INLINES
-REPLACEMENT void *memchr(const void *s, int c, size_t n) {
-    int i;
-    char *cp = (char *)s;
-    for (i = 0; i < n; i++) {
-	if (cp[i] == c)
-	    return &cp[i];
-    }
-    return 0;
-}
-
-REPLACEMENT void *memcpy(void *dest, const void *src, unsigned int n) {
-    int i;
-    char *d = dest;
-    const char *s = src;
-    for (i = 0; i < n; i++) {
-	d[i] = s[i];
-    }
-    return dest;
-}
-
-REPLACEMENT void *mempcpy(void *dest, const void *src, unsigned int n) {
-    int i;
-    char *d = dest;
-    const char *s = src;
-    for (i = 0; i < n; i++) {
-	d[i] = s[i];
-    }
-    return dest + n;
-}
-
-REPLACEMENT void *memmove(void *dest, const void *src, unsigned int n) {
-    int i;
-    char *d = dest;
-    const char *s = src;
-    if (d < s) {
-	for (i = 0; i < n; i++) {
-	    d[i] = s[i];
-	}
-    } else {
-	for (i = n-1; i != (unsigned)-1; i--) {
-	    d[i] = s[i];
-	}
-    }
-    return dest;
-}    
-
-REPLACEMENT void *memset(void *loc, int c, unsigned int n) {
-    int i;
-    char *s = loc;
-    for (i = 0; i < n; i++) {
-	s[i] = c;
-    }
-    return loc;
-}
-
-REPLACEMENT int memcmp(const void *v1, const void *v2, size_t count) {
-    int i;
-    const char *s1 = v1, *s2 = v2;
-    for (i = 0; i < count; i++) {
-	if (s1[i] != s2[i])
-	    return s1[i] - s2[i];
-    }
-    return 0;
-}
-#endif
 
 #if 0
 /* The world's smallest malloc implementation (TM).
@@ -118,114 +51,12 @@ REPLACEMENT char *getenv(const char *name) {
 	return v;
 }
 
-#ifdef DEFINE_INLINES
-REPLACEMENT size_t strlen(const char *s) {
-    size_t i;
-    for (i = 0; *s; s++)
-	i++;
-    return i;
-}
-
-REPLACEMENT int strcmp(const char *s1, const char *s2) {
-    while (*s1 && *s1 == *s2) {
-	s1++;
-	s2++;
-    }
-    return *s1 - *s2;
-}
-
-REPLACEMENT int strncmp(const char *s1, const char *s2, size_t limit) {
-    int i;
-    for (i = 0; i < limit; i++) {
-	if (s1[i] != s2[i])
-	    return s1[i] - s2[i];
-	if (!s1[i])
-	    return 0;
-    }
-    return 0;
-}
-
-REPLACEMENT char *strcpy(char *buf, const char *src) {
-    char *p;
-    for (p = buf; *src; src++, p++) {
-	*p = *src;
-    }
-    *p = 0;
-    return buf;
-}
-
-REPLACEMENT char *strncpy(char *buf, const char *src, size_t limit) {
-    int i;
-    for (i = 0; i < limit; i++) {
-	buf[i] = src[i];
-	if (!src[i])
-	    break;
-    }
-    for (; i < limit; i++) {
-	buf[i] = 0;
-    }
-    return buf;
-}
-
-REPLACEMENT char *strcat(char *buf, const char *extra) {
-    char *p = buf;
-    p += strlen(p);
-    strcpy(p, extra);
-    return buf;
-}
-
-REPLACEMENT char *strncat(char *buf, const char *extra, size_t n) {
-    char *p = buf;
-    p += strlen(p);
-    strncpy(p, extra, n);
-    return buf;    
-}
-
-REPLACEMENT const char *strstr(const char *big, const char *small) {
-    size_t big_len = strlen(big);
-    size_t small_len = strlen(small);
-    const char *p = big;
-    int count;
-    if (big_len < small_len)
-	return 0;
-    if (!small_len)
-	return big;
-    count = big_len - small_len + 1;
-    for (; count; count--) {
-	if (!memcmp(p, small, small_len))
-	    return p;
-	p++;
-    }
-    return 0;    
-}
-#endif
-
 REPLACEMENT char *strdup(const char *s) {
     char *buf = (char *)malloc(strlen(s) + 1);
     if (buf)
 	strcpy(buf, s);
     return buf;
 }
-
-#ifdef DEFINE_INLINES
-REPLACEMENT char *strchr(const char *s, int c) {
-    char *p;
-    for (p = (char *)s; *p; p++) {
-	if (*p == c)
-	    return p;
-    }
-    return 0;
-}
-
-REPLACEMENT char *strrchr(const char *s, int c) {
-    char *p, *q = 0;
-    for (p = (char *)s; *p; p++) {
-	if (*p == c)
-	    q = p;
-    }
-    return q;
-}
-#endif
 
 int sys_nerr = 34;
 
