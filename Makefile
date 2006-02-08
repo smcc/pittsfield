@@ -7,16 +7,17 @@ AS:=as
 NO_EBX := --fixed-ebx
 NO_SCHD := -fno-schedule-insns2
 
+# Adjust for your preferred version of GCC, at least 3.3 suggested:
 # CC  := gcc-3.3
 # CXX := g++-3.3
+CC  := gcc
+CXX := g++
 
-CC  := gcc-4.0
-CXX := g++-4.0
-
-VERIFY_CFLAGS := -I../../libdisasm_0.21-pre2/libdisasm -DVERIFY
-VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
-# VERIFY_CFLAGS := 
-# VERIFY_LDFLAGS :=
+# Adjust to location of libdisasm, if you want the C verifier
+# VERIFY_CFLAGS := -I../../libdisasm_0.21-pre2/libdisasm -DVERIFY
+# VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
+VERIFY_CFLAGS := 
+VERIFY_LDFLAGS :=
 
 SIZE ?= classic
 REWRITE := perl rewrite.pl -size-$(SIZE)
