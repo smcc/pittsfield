@@ -1,4 +1,4 @@
-This is the first release of PittSFIeld, a tool for sandboxing
+This is the second release of PittSFIeld, a tool for sandboxing
 arbitrary x86 binary programs.
 
 Sandboxing, also known as software-based fault isolation (SFI), is a
@@ -6,6 +6,11 @@ technique to enforce security policies constraining memory access and
 control flow in untrusted binary code. It directly modifies software
 at the instruction level to efficiently check that memory addresses
 and jump targets lie only in designated safe data and code regions.
+More information about PittSFIeld, including a technical report
+describing its approach in detail, can be found at the project web
+site, at:
+
+http://pag.csail.mit.edu/~smcc/projects/pittsfield/
 
 This distribution includes the rewriting and verification tools (Perl
 scripts rewrite.pl and verify.pl), as well as an example application
@@ -16,26 +21,56 @@ code (and so untrusted), and others make calls out of the sandbox to
 trusted stubs.
 
 Required software:
-GCC (tested with version 3.3.5)
-GNU binutils (tested with version 2.15)
+GCC (tested with versions 3.3.5 and 4.0.2)
+GNU binutils (tested with version 2.16.1)
 Perl (tested with version 5.8.4)
 libelf (tested with version 0.8.5)
 
-There is not yet any documentation, sorry. The Makefile has examples
-of things you can do; parameters of the translation can be controlled
-in sizes.pm. To compile and isolate a module foo-mod.c, say 
+This version also includes a second implementation of the verifier
+that runs in C inside the loader. It requires the libdisasm x86
+disassembly library, which is available from
 
-  make foo-mod.fio
+http://bastard.sourceforge.net/libdisasm.html
 
-To verify it, say
+The most recent available version of libdisasm as of this writing,
+0.21-pre2, has a bug that affects the disassembly of some floating
+point operations; the file libdisasm-0.21-pre2.patch contains a
+patch. 
 
-  make foo-mod.check
+There is not yet any documentation, sorry. The top-level tool is the
+"pittsfield-gcc.pl" script, which acts as a substitute C compiler: use
+it with the "-c" option to each ".c" file of your program into a ".o"
+file, and then with a list of all the ".o" files to create either a
+".fio" file (representing a complete sandboxed object, including the
+stub C library) or a compiled copy of the loader with the path to a
+.fio file hard-coded.
 
-To execute it, say
+Running "make" in this directory will compile the loader and two
+"Hello, world!" sandboxed modules, one using the C library and one
+using the C++ library. To run them, say:
 
-  ./loader foo-mod.fio
+./loader-classic hw.fio
+./loader-classic hw-c++.fio
 
-PittSFIeld is Copyright (C) 2004-2005, Stephen McCamant.
+By default, the Makefile compiles modules with the "classic" memory
+layout, with 16MB code and data regions. Two other layouts, "medium"
+and "large", are also supported; to use them, use the SIZE Makefile
+option and the corresponding loader binary:
+
+make clean
+make SIZE=large hw.fio loader-large
+./loader-large hw.fio
+
+Note that this is still a research prototype: neither of the supplied
+verifiers has yet been sufficiently reviewed to recommend the use of
+PittSFIeld in security-critical production environments. Though the
+two verifiers have been cross-checked and a number of problems have
+been fixed, they were written by the same developer, and it is likely
+that additional problems exist. Also, because of the limitations of
+the current version of libdisasm, the load-time verifier unsafely
+treats all x87 floating-point instructions as equivalent.
+
+PittSFIeld is Copyright (C) 2004-2006, Stephen McCamant.
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License, version 2, as
 published by the Free Software Foundation.
@@ -47,5 +82,5 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-USA
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+02110-1301 USA
