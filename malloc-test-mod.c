@@ -1,4 +1,4 @@
-#include "libc.c"
+#include "libc.h"
 
 struct chunk {
     struct chunk *next;
@@ -12,7 +12,7 @@ void free_all(struct chunk *p) {
     free(p);
 }
 
-int main() {
+int main(int argc, char **argv) {
     int i;
     struct chunk *head = 0, *p;
     for (i = 0; i < 100; i++) {
