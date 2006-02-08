@@ -9,8 +9,6 @@ NO_SCHD := -fno-schedule-insns2
 
 # CC  := gcc-3.3
 # CXX := g++-3.3
-# FEWER_LINES_HACK := 1
-# TFF := ./topformflat
 
 CC  := gcc-4.0
 CXX := g++-4.0
@@ -72,10 +70,10 @@ sandbox-include/.setup: libc-h-copies.txt stubs.h libc.h stubs.h float.h fstream
 pittsfield-g++.pl: pittsfield-gcc.pl
 	cp $< $@
 
-%.mo: %.c sandbox-include/.setup
+%.mo: %.c sandbox-include/.setup stub-list
 	$(SFI_CC) $(CFLAGS) -c $< -o $@
 
-%.mo: %.cc pittsfield-g++.pl sandbox-include/.setup
+%.mo: %.cc pittsfield-g++.pl sandbox-include/.setup stub-list
 	$(SFI_CXX) $(CXXFLAGS) $(CFLAGS) -c $< -o $@
 
 %-c++.fio: %-c++.mo pittsfield-g++.pl libc.c libcplusplus.cc
@@ -83,26 +81,6 @@ pittsfield-g++.pl: pittsfield-gcc.pl
 
 %.fio: %.mo libc.c
 	$(SFI_CC) $< -o $@
-
-ifdef FEWER_LINES_HACK
-gcc-mod.s:	gcc-mod-fewer-lines.c libc.h stub-list sizes.h
-	$(CC) -Wall -S $(CFLAGS) $(NO_EBX) gcc-mod-fewer-lines.c -o $@
-
-%-fewer-lines.c:	%.c sizes.h libc.c libc.h stubs.h
-	$(CC) -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-fewer-lines.c
-
-%-no-stubs.c:	%.c libc.h
-	$(CC) -DNO_STUBS -E $*.c | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.c
-
-%-no-stubs.cc:	%.cc libc.h
-	$(CXX) $(CXXFLAGS) -DNO_STUBS -E $*.cc | $(TFF) 0 | perl -ne 'print unless /^# / or /^\s*$$/' >$*-no-stubs.cc
-else
-%-no-stubs.c:	%.c libc.h
-	$(CC) -DNO_STUBS -E $*.c >$*-no-stubs.c
-
-%-no-stubs.cc:	%.cc libc.h
-	$(CXX) $(CXXFLAGS) -DNO_STUBS -E $*.cc  >$*-no-stubs.cc
-endif
 
 %.check: %.fio verify.pl x86_common.pm sizes.pm
 	objdump -d $*.fio | $(VERIFY_PL) 2>&1 | tee $*.check
