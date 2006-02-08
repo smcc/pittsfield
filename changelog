@@ -1,0 +1,22 @@
+0.04	2006-02-08
+	Second public release
+	Load-time verifier substantially complete
+	GCC 4.0 compatibility improvements
+	More security bugs fixed
+
+0.03	2006-02-01
+	Tag for version used in a paper submission
+	Performance improvements in EFLAGS handling, other areas
+	Expanded stub library
+	Runs on the SPECint2000 benchmarks
+	
+0.02	2005-03-03
+	First public release
+
+0.01	2005-02-04
+	First version named "PittSFIeld"
+	Tag for version used in a paper submission
+	Runs on gcc. 
+
+	2004-05-14
+        Initial CS255 class project version
