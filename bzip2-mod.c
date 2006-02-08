@@ -5106,8 +5106,6 @@ const char * BZ_API(BZ2_bzerror) (BZFILE *b, int *errnum)
   Some stuff for all platforms.
 --*/
 
-#include "bzlib.h"
-
 #define ERROR_IF_EOF(i)       { if ((i) == EOF)  ioError(); }
 #define ERROR_IF_NOT_ZERO(i)  { if ((i) != 0)    ioError(); }
 #define ERROR_IF_MINUS_ONE(i) { if ((i) == (-1)) ioError(); }
