@@ -4,6 +4,7 @@ dirent.h
 errno.h
 fcntl.h
 grp.h
+libc.h
 limits.h
 locale.h
 math.h
