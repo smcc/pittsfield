@@ -1,28 +1,30 @@
-COPYING			GNU General Public License
-MANIFEST		List of files to distribute
-Makefile		Script for compiling and fault-isolating
-README			Instructions
-crtbegin.S		Source for special first object for C++ linking
-crtend.S		Source for special last object for C++ linking
-float.h			C standard library floating-point sizes header
-fstream.h		C++ file IO template header
-high-link.x		Linker script to relocate to a high address
-hw-c++.cc		Very simple C++ example module
-hw.c			Very simple example module
-index-stubs.pl		Generate files from stubs.h
-iostream.h		C++ IO stream template header
-libc.c			In-sandbox side of C library (implementation)
-libc.h			In-sandbox side of C library (declarations)
-libcplusplus.cc		In-sandbox version of C++ standard library
-libc-h-copies.txt	List of files that should be copies of libc.h
-link-c++.x		Linker script for C++ sandboxed code
-loader.c		Application to load sandboxed binaries
-outside.c		Alternate stubs for use in debugging w/o loader
-pittsfield-gcc.pl	Compilation script providing compiler-like interface
-rewrite-stringops.pl	Rewrite assembly to remove string operations
-rewrite.pl		Rewrite assembly to add sandboxing checks
-sizes.pm		Define parameters of sandboxing process
-stat.h			Unix-like sys/stat.h header
-stubs.h			Definition of interface with sandbox
-verify.pl		Make sure sandboxing was performed properly
-x86_common.pm		Definitions of instructions used by rewrite/verify
+COPYING			   GNU General Public License
+MANIFEST		   List of files to distribute
+Makefile		   Script for compiling and fault-isolating
+README			   Instructions
+changelog		   List of versions and changes between them
+crtbegin.S		   Source for special first object for C++ linking
+crtend.S		   Source for special last object for C++ linking
+float.h			   C standard library floating-point sizes header
+fstream.h		   C++ file IO template header
+high-link.x		   Linker script to relocate to a high address
+hw-c++.cc		   Very simple C++ example module
+hw.c			   Very simple example module
+index-stubs.pl		   Generate files from stubs.h
+iostream.h		   C++ IO stream template header
+libc.c			   In-sandbox side of C library (implementation)
+libc.h			   In-sandbox side of C library (declarations)
+libcplusplus.cc		   In-sandbox version of C++ standard library
+libc-h-copies.txt	   List of files that should be copies of libc.h
+libdisasm-0.21-pre2.patch  Fix for bug in disassembly library
+link-c++.x		   Linker script for C++ sandboxed code
+loader.c		   Application to load sandboxed binaries
+outside.c		   Alternate stubs for use in debugging w/o loader
+pittsfield-gcc.pl	   Compilation script providing compiler-like interface
+rewrite-stringops.pl	   Rewrite assembly to remove string operations
+rewrite.pl		   Rewrite assembly to add sandboxing checks
+sizes.pm		   Define parameters of sandboxing process
+stat.h			   Unix-like sys/stat.h header
+stubs.h			   Definition of interface with sandbox
+verify.pl		   Make sure sandboxing was performed properly
+x86_common.pm		   Definitions of instructions used by rewrite/verify
