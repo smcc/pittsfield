@@ -80,12 +80,8 @@ typedef struct {
 
 #define REPLACEMENT
 
-#ifndef REPLACEMENT_STATIC
-#define REPLACEMENT_STATIC static
-#endif
-
 #ifndef REPLACEMENT_INLINE
-#define REPLACEMENT_INLINE inline
+#define REPLACEMENT_INLINE extern inline
 #endif
 
 #ifndef NULL
@@ -224,7 +220,7 @@ REPLACEMENT int fprintf(FILE *stream, const char *format, ...);
 #ifndef HIDE_MALLOC_PROTOS
 REPLACEMENT void *malloc(size_t nbytes);
 #endif
-REPLACEMENT_STATIC char *strcpy(char *buf, const char *src);
+REPLACEMENT_INLINE char *strcpy(char *buf, const char *src);
 REPLACEMENT char *strdup(const char *s);
 
 typedef unsigned int nlink_t;
@@ -262,7 +258,7 @@ struct stat {
 
 void myabort(void);
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE void *memchr(const void *s, int c, size_t n) {
+REPLACEMENT_INLINE void *memchr(const void *s, int c, size_t n) {
     unsigned i;
     char *cp = (char *)s;
     for (i = 0; i < n; i++) {
@@ -272,7 +268,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE void *memchr(const void *s, int c, size_t 
     return 0;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE void *memcpy(void *dest, const void *src, unsigned int n) {
+REPLACEMENT_INLINE void *memcpy(void *dest, const void *src, unsigned int n) {
     unsigned i;
     char *d = (char *)dest;
     const char *s = (const char *)src;
@@ -282,7 +278,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE void *memcpy(void *dest, const void *src, 
     return dest;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE void *mempcpy(void *dest, const void *src, unsigned int n) {
+REPLACEMENT_INLINE void *mempcpy(void *dest, const void *src, unsigned int n) {
     unsigned i;
     char *d = (char *)dest;
     const char *s = (const char *)src;
@@ -292,7 +288,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE void *mempcpy(void *dest, const void *src,
     return (char *)dest + n;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE void *memmove(void *dest, const void *src, unsigned int n) {
+REPLACEMENT_INLINE void *memmove(void *dest, const void *src, unsigned int n) {
     unsigned i;
     char *d = (char *)dest;
     const char *s = (const char *)src;
@@ -308,7 +304,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE void *memmove(void *dest, const void *src,
     return dest;
 }    
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE void *memset(void *loc, int c, unsigned int n) {
+REPLACEMENT_INLINE void *memset(void *loc, int c, unsigned int n) {
     unsigned i;
     char *s = (char *)loc;
     for (i = 0; i < n; i++) {
@@ -317,7 +313,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE void *memset(void *loc, int c, unsigned in
     return loc;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE int memcmp(const void *v1, const void *v2, size_t count) {
+REPLACEMENT_INLINE int memcmp(const void *v1, const void *v2, size_t count) {
     unsigned i;
     const char *s1 = (const char *)v1, *s2 = (const char *)v2;
     for (i = 0; i < count; i++) {
@@ -335,14 +331,14 @@ REPLACEMENT char *strerror(int errnum);
 REPLACEMENT void perror(const char *command);
 REPLACEMENT char *getenv(const char *name);
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE size_t strlen(const char *s) {
+REPLACEMENT_INLINE size_t strlen(const char *s) {
     size_t i;
     for (i = 0; *s; s++)
 	i++;
     return i;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE int strcmp(const char *s1, const char *s2) {
+REPLACEMENT_INLINE int strcmp(const char *s1, const char *s2) {
     while (*s1 && *s1 == *s2) {
 	s1++;
 	s2++;
@@ -350,7 +346,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE int strcmp(const char *s1, const char *s2)
     return *s1 - *s2;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE int strncmp(const char *s1, const char *s2, size_t limit) {
+REPLACEMENT_INLINE int strncmp(const char *s1, const char *s2, size_t limit) {
     unsigned i;
     for (i = 0; i < limit; i++) {
 	if (s1[i] != s2[i])
@@ -361,7 +357,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE int strncmp(const char *s1, const char *s2
     return 0;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE char *strcpy(char *buf, const char *src) {
+REPLACEMENT_INLINE char *strcpy(char *buf, const char *src) {
     char *p;
     for (p = buf; *src; src++, p++) {
 	*p = *src;
@@ -370,7 +366,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE char *strcpy(char *buf, const char *src) {
     return buf;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE char *strncpy(char *buf, const char *src, size_t limit) {
+REPLACEMENT_INLINE char *strncpy(char *buf, const char *src, size_t limit) {
     unsigned i;
     for (i = 0; i < limit; i++) {
 	buf[i] = src[i];
@@ -383,21 +379,21 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE char *strncpy(char *buf, const char *src, 
     return buf;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE char *strcat(char *buf, const char *extra) {
+REPLACEMENT_INLINE char *strcat(char *buf, const char *extra) {
     char *p = buf;
     p += strlen(p);
     strcpy(p, extra);
     return buf;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE char *strncat(char *buf, const char *extra, size_t n) {
+REPLACEMENT_INLINE char *strncat(char *buf, const char *extra, size_t n) {
     char *p = buf;
     p += strlen(p);
     strncpy(p, extra, n);
     return buf;    
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE const char *strstr(const char *big, const char *small) {
+REPLACEMENT_INLINE const char *strstr(const char *big, const char *small) {
     size_t big_len = strlen(big);
     size_t small_len = strlen(small);
     const char *p = big;
@@ -417,7 +413,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE const char *strstr(const char *big, const 
 
 REPLACEMENT char *strdup(const char *s);
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE char *strchr(const char *s, int c) {
+REPLACEMENT_INLINE char *strchr(const char *s, int c) {
     char *p;
     for (p = (char *)s; *p; p++) {
 	if (*p == c)
@@ -426,7 +422,7 @@ REPLACEMENT_STATIC REPLACEMENT_INLINE char *strchr(const char *s, int c) {
     return 0;
 }
 
-REPLACEMENT_STATIC REPLACEMENT_INLINE char *strrchr(const char *s, int c) {
+REPLACEMENT_INLINE char *strrchr(const char *s, int c) {
     char *p, *q = 0;
     for (p = (char *)s; *p; p++) {
 	if (*p == c)

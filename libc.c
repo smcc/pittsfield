@@ -1,5 +1,4 @@
 #define NEED_STAT
-#define REPLACEMENT_STATIC
 #define REPLACEMENT_INLINE
 #include "libc.h"
 #include "sizes.h"
