@@ -146,6 +146,9 @@ my $vx32 = (grep($_ eq "--vx32", @args) > 0);
 my $crt0 = (grep($_ eq "--crt0", @args) > 0);
 @args = grep($_ ne "--crt0", @args);
 
+my $threadsafe_return = (grep($_ eq "--threadsafe-return", @args) > 0);
+@args = grep($_ ne "--threadsafe-return", @args);
+
 my($libc_mo_name, $libcplusplus_mo_name) = ("libc.mo", "libcplusplus.mo");
 if ($no_sfi or $jump_only) {
     my $ext = "";
@@ -195,6 +198,9 @@ sub compile_file {
     }
     if ($crt0) {
 	push @rewrite_flags, ($vx32 ? "-vx32main" : "-main");
+    }
+    if ($threadsafe_return) {
+	push @rewrite_flags, "-threadsafe-return";
     }
     verbose_command(($cxx_mode ? $gxx : $gcc),
 		    "-S", "-o", "$temp_file.s", @args, $c_file);

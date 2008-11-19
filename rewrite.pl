@@ -11,6 +11,7 @@ my $do_no_rodata = 1;
 my $do_align = 1;
 my $nop_only = 0;
 my $pushf_and_nop = 0;
+my $threadsafe_return = 0;
 
 my $is_main = 0;
 my $stubs_list;
@@ -43,6 +44,11 @@ if (grep($_ eq "-padonly", @ARGV)) {
     $nop_only = 1;
     $pushf_and_nop = 1;
     @ARGV = grep($_ ne "-pushf-and-nop", @ARGV);
+}
+
+if (grep($_ eq "-threadsafe-return", @ARGV)) {
+    $threadsafe_return = 1;
+    @ARGV = grep($_ ne "-threadsafe-return", @ARGV);
 }
 
 for my $size (@allowed_sizes) {
@@ -360,22 +366,33 @@ sub maybe_rewrite {
 	warn "Skipping bogus direct read $op $args";
 	return 1;
     } elsif ($jump_sandbox and $op eq "ret") {
-	$dirty_esp = 0;
-	maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
-			+ (length($args) ? 3 : 1));
-	emit("andl\t$JUMP_MASK, (%esp)", 7, 1) if $DO_AND;
-	emit("orl\t$CODE_START, (%esp)", 7, 1) if $DO_OR;
-	emit_test("(%esp)", $JUMP_ANTI_MASK, 1) if $DO_TEST;
-	emit("ret $args", (length($args) ? 3 : 1), 0);
-	# The old, slow way:
- 	#maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
- 	#		+ 3);
-	#emit("popl\t%ebx", 1);
- 	#emit("andl\t$JUMP_MASK, %ebx", 7) if $DO_AND;
- 	#emit("orl\t$CODE_START, %ebx", 7) if $DO_OR;
- 	#emit_test("%ebx", $JUMP_ANTI_MASK) if $DO_TEST;
-	#emit("jmp *%ebx", 2);
-	#die if length($args);
+	if (!$threadsafe_return) {
+	    $dirty_esp = 0;
+	    maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
+			    + (length($args) ? 3 : 1));
+	    emit("andl\t$JUMP_MASK, (%esp)", 7, 1) if $DO_AND;
+	    emit("orl\t$CODE_START, (%esp)", 7, 1) if $DO_OR;
+	    emit_test("(%esp)", $JUMP_ANTI_MASK, 1) if $DO_TEST;
+	    emit("ret $args", (length($args) ? 3 : 1), 0);
+	} else {
+	    # The old, slow way:
+	    my $do_extra_pop = length($args) > 0;
+	    emit("popl\t%ebx", 1);
+	    if ($do_extra_pop) {
+		# XXX is this the right length?
+		emit("addl\t$args, %esp", 3);
+		maybe_align_for(6*$DO_AND + 6*$DO_OR + $TEST_LEN*$DO_TEST);
+		emit("andl\t$DATA_MASK, %esp", 6, 1) if $DO_AND;
+		emit("orl\t$DATA_START, %esp", 6, 1) if $DO_OR;
+		emit_test("%esp", $DATA_ANTI_MASK, 1) if $DO_TEST;
+	    }
+	    maybe_align_for(7*$DO_AND + 7*$DO_OR + (1 + $TEST_LEN)*$DO_TEST
+	    		+ 2);
+	    emit("andl\t$JUMP_MASK, %ebx", 7) if $DO_AND;
+	    emit("orl\t$CODE_START, %ebx", 7) if $DO_OR;
+	    emit_test("%ebx", $JUMP_ANTI_MASK) if $DO_TEST;
+	    emit("jmp *%ebx", 2);
+	}
 	return 1;
     } elsif ($op eq "call") {
 	my $real_call = "";
