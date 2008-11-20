@@ -16,7 +16,6 @@ libc.c			   In-sandbox side of C library (implementation)
 libc.h			   In-sandbox side of C library (declarations)
 libcplusplus.cc		   In-sandbox version of C++ standard library
 libc-h-copies.txt	   List of files that should be copies of libc.h
-libdisasm-0.21-pre2.patch  Fix for bug in disassembly library
 link-c++.x		   Linker script for C++ sandboxed code
 loader.c		   Application to load sandboxed binaries
 outside.c		   Alternate stubs for use in debugging w/o loader

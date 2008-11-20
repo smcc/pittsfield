@@ -1,4 +1,4 @@
-This is the second release of PittSFIeld, a tool for sandboxing
+This is the latest release of PittSFIeld, a tool for sandboxing
 arbitrary x86 binary programs.
 
 Sandboxing, also known as software-based fault isolation (SFI), is a
@@ -6,7 +6,7 @@ technique to enforce security policies constraining memory access and
 control flow in untrusted binary code. It directly modifies software
 at the instruction level to efficiently check that memory addresses
 and jump targets lie only in designated safe data and code regions.
-More information about PittSFIeld, including a technical report
+More information about PittSFIeld, including academic papers
 describing its approach in detail, can be found at the project web
 site, at:
 
@@ -21,10 +21,10 @@ code (and so untrusted), and others make calls out of the sandbox to
 trusted stubs.
 
 Required software:
-GCC (tested with versions 3.3.5 and 4.0.2)
-GNU binutils (tested with version 2.16.1)
-Perl (tested with version 5.8.4)
-libelf (tested with version 0.8.5)
+GCC (most recently tested with version 4.3.2)
+GNU binutils (most recently tested with version 2.18)
+Perl (most recently tested with version 5.10.0)
+libelf (most recently tested with version 0.8.10)
 
 This version also includes a second implementation of the verifier
 that runs in C inside the loader. It requires the libdisasm x86
@@ -32,10 +32,9 @@ disassembly library, which is available from
 
 http://bastard.sourceforge.net/libdisasm.html
 
-The most recent available version of libdisasm as of this writing,
-0.21-pre2, has a bug that affects the disassembly of some floating
-point operations; the file libdisasm-0.21-pre2.patch contains a
-patch. 
+The code in this release was last tested with libdisasm 0.23, which is
+slightly incompatible with the version used by earlier PittSFIeld
+versions.
 
 There is not yet any documentation, sorry. The top-level tool is the
 "pittsfield-gcc.pl" script, which acts as a substitute C compiler: use
@@ -66,11 +65,11 @@ verifiers has yet been sufficiently reviewed to recommend the use of
 PittSFIeld in security-critical production environments. Though the
 two verifiers have been cross-checked and a number of problems have
 been fixed, they were written by the same developer, and it is likely
-that additional problems exist. Also, because of the limitations of
-the current version of libdisasm, the load-time verifier unsafely
-treats all x87 floating-point instructions as equivalent.
+that additional problems exist. Also, because of limitations of the
+libdisasm library at the time it was written, the load-time verifier
+unsafely treats all x87 floating-point instructions as equivalent.
 
-PittSFIeld is Copyright (C) 2004-2006, Stephen McCamant.
+PittSFIeld is Copyright (C) 2004-2006,2008, Stephen McCamant.
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License, version 2, as
 published by the Free Software Foundation.

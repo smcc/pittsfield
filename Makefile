@@ -14,8 +14,8 @@ CC  := gcc
 CXX := g++
 
 # Adjust to location of libdisasm, if you want the C verifier
-# VERIFY_CFLAGS := -I../../libdisasm_0.21-pre2/libdisasm -DVERIFY
-# VERIFY_LDFLAGS := ../../libdisasm_0.21-pre2/libdisasm/libdisasm.a
+# VERIFY_CFLAGS := -I../libdisasm-0.23/libdisasm -DVERIFY
+# VERIFY_LDFLAGS := ../libdisasm-0.23/libdisasm/.libs/libdisasm.a
 VERIFY_CFLAGS := 
 VERIFY_LDFLAGS :=
 
