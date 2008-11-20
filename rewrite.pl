@@ -662,6 +662,9 @@ while (<INPUT>) {
 	  ($eflags_live_before[$.-1]?"F":"");
     } elsif (/^\t\.p2align 2/) {
 	$this_chunk += 4;
+    } elsif (/^\t\.p2align/) {
+	# Ignore other alignment directives introduced by the compiler
+	next;
     } elsif (/^($label|\w+):$/) {
 	align();
     }
