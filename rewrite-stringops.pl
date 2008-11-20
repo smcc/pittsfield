@@ -5,11 +5,16 @@ use strict;
 my $label_count = 1;
 
 while (<>) {
-    if (/^\t(rep.*)$/) {
+    if (/^\t(rep(?:e|ne|z|nz|))(?: (\w+))?$/) {
 	my $repop = $1;
-	my $stringop = <>;
-	chomp $stringop;
-	$stringop =~ s/^\t//;
+	my $stringop;
+	if ($2) {
+	    $stringop = $2;
+	} else {
+	    $stringop = <>;
+	    chomp $stringop;
+	    $stringop =~ s/^\t//;
+	}
 	my $head_label = ".LRWSOPS$label_count"; $label_count++;
 	my $tail_label = ".LRWSOPS$label_count"; $label_count++;
 	my $save_eax = ($stringop !~ /^stos/);
