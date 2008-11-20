@@ -1,4 +1,9 @@
-0.04	2006-02-08
+0.5	2008-11-20
+	Bugfix and portability release
+	GCC 4.3, Binutils 2.18, and libdisasm 0.23 compatibility
+	Flag for thread-safe sandboxing of return addresses
+	
+0.4	2006-02-08
 	Second public release
 	Load-time verifier substantially complete
 	GCC 4.0 compatibility improvements
