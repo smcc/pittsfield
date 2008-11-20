@@ -57,6 +57,23 @@ if ($style eq "and") {
     $esp_safety = 0;
 }
 
+sub signed_word {
+    my($x) = @_;
+    if ($x =~ /^-0x([0-9a-f]+)$/) {
+	return -hex($1);
+    } elsif ($x =~ /^0x([0-9a-f]+)$/) {
+	# interpret unsigned hex as signed
+	return unpack("i", pack("I", hex($1)));
+    } elsif ($x =~ /^-?(\d+)$/) {
+	return $x;
+    } elsif ($x eq "") {
+	return 0;
+    } else {
+	use Carp;
+	confess "Unsupported signed word format '$x'";
+    }
+}
+
 sub check_insn {
     my($op, $args, $safety, $unsafety) = @_;
     if ($args eq "") {
@@ -130,12 +147,12 @@ sub check_insn {
 	    if ($target eq "(%ebx)" and $safety & $data_safety) {
 		return $flags;
 	    } elsif ($target =~ /^($lhalf|0xffff[0-9a-f]{4})\(%ebp\)$/) {
-		my $offset = unpack("i", pack("I", hex($1)));
+		my $offset = signed_word($1);
 		if (!($unsafety & CHANGE_EBP) and abs($offset) < 32767) {
 		    return 0;
 		}
 	    } elsif ($target =~ /^($lhalf|0xffff[0-9a-f]{4}|)\(%esp(,1)?\)$/) {
-		my $offset = unpack("i", pack("I", hex($1)));
+		my $offset = signed_word($1);
 		if (!($unsafety & CHANGE_ESP) and abs($offset) < 127) {
 		    return 0;
 		}
@@ -168,7 +185,7 @@ sub check_insn {
 	} else {
 	    die "Unknown insn `$op $args'";
 	}
-    } elsif ($args =~ /^($immed),($complex),($reg)$/) {
+    } elsif ($args =~ /^($immed),($complex|$lword),($reg)$/) {
 	my($const, $src, $dest) = ($1, $2, $3);
 	my $change;
 	$change |= CHANGE_EBP if $dest =~ /bp/;
@@ -193,6 +210,13 @@ sub check_insn {
 	    }
 	    return $change;
 	} elsif ($op =~ /^$arith|$shift|$fbin$/) {
+	    return $change;
+	} elsif ($op eq "xchg") {
+	    # xchg changes both regs...
+	    $change |= CHANGE_EBP if $from =~ /bp/;
+	    $change |= CHANGE_ESP if $from =~ /sp/;
+	    # unless they're the same one
+	    $change = 0 if $from eq $to;
 	    return $change;
 	} else {
 	    die "Unknown insn `$op $args'";
@@ -248,12 +272,12 @@ sub check_insn {
 	my($val, $to) = ($1, $2);
 	my $simple = 0;
 	if ($to =~ /^($lhalf|0xffff[0-9a-f]{4})\(%ebp\)$/) {
-	    my $offset = unpack("i", pack("I", hex($1)));
+	    my $offset = signed_word($1);
 	    if (!($unsafety & CHANGE_EBP) and abs($offset) < 32768) {
 		$simple = USE_EBP;
 	    }
 	} elsif ($to =~ /^($lhalf|0xffff[0-9a-f]{4}|)\(%esp(,1)?\)$/) {
-	    my $offset = unpack("i", pack("I", hex($1)));
+	    my $offset = signed_word($1);
 	    if ($op eq "andl" and $val eq $JUMP_MASK
 		and ($to = "(%esp,1)" || $to eq "(%esp)")) {
 		return USE_ESP|STACK_TOP_SAFE;
@@ -312,7 +336,7 @@ sub check_insn {
 	$change |= CHANGE_EBP if $to =~ /bp/;
 	if ($to =~ /sp/) {
 	    if ($op eq "lea" and $from =~ /^(0x[0-9a-f]+)\(%e[bs]p(,1)?\)$/
-		and abs(unpack("i", pack("I", hex($1)))) < 128) {
+		and abs(signed_word($1)) < 128) {
 		$change |= BUMP_ESP;
 	    } else {
 		$change |= CHANGE_ESP;
@@ -320,7 +344,7 @@ sub check_insn {
 	}
 	my $simple_ebp;
 	if ($from =~ /^(0x[0-9a-f]+)\(%ebp\)$/) {
-	    my $offset = unpack("i", pack("I", hex($1)));
+	    my $offset = signed_word($1);
 	    if (!($unsafety & CHANGE_EBP) and abs($offset) <= 65535) {
 		$simple_ebp = 1;
 	    }
@@ -337,13 +361,13 @@ sub check_insn {
     } elsif ($args =~ /^($reg),($complex)$/) {
 	my($from, $to) = ($1, $2);
 	my $simple = 0;
-	if ($to =~ /^(0x[0-9a-f]+)\(%ebp\)$/) {
-	    my $offset = unpack("i", pack("I", hex($1)));
+	if ($to =~ /^(-?0x[0-9a-f]+)\(%ebp\)$/) {
+	    my $offset = signed_word($1);
 	    if (!($unsafety & CHANGE_EBP) and abs($offset) < 32767) {
 		$simple = USE_EBP;
 	    }
-	} elsif ($to =~ /^((0x[0-9a-f]+)?)\(%esp(,1)?\)$/) {
-	    my $offset = unpack("i", pack("I", hex($1)));
+	} elsif ($to =~ /^((-?0x[0-9a-f]+)?)\(%esp(,1)?\)$/) {
+	    my $offset = signed_word($1);
 	    if (!($unsafety & CHANGE_ESP) and abs($offset) < 127) {
 		$simple = USE_ESP;
 	    }
@@ -416,7 +440,7 @@ while (<>) {
 	    ($args =~ /%esp./ || $op =~ /push|pop|call|ret/)) {
 	    printf "Use of unsafe %%esp at 0x%08x\n", $addr;
 	}
-	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf)$/) {
+	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf|xchg)$/) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);

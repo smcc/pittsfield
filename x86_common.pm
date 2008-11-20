@@ -36,19 +36,19 @@ our $fcload = qr/fldcw/;
 our $cond = qr/n?(?:o|b|c|ae|z|e|be|a|s|p|pe|po|l|ge|le|g)/;
 our $label = qr/\.L(?:RWSOPS)?\d+/;
 
-our $b_sign = qr/-128|-?(?:12[0-7]|1[01]\d|\d\d|\d)/;
-our $h_sign = qr/-32768|-?(?:3276[0-7]|327[0-5]\d|32[0-6]\d\d|3[01]\d{3}|\d{1,4})/;
-our $w_sign = qr/-?\d+/;
 our $b_hex = qr/0x[0-9a-f][0-9a-f]?/;
 our $h_hex = qr/0x[0-9a-f]{1,4}/;
 our $w_hex = qr/0x[0-9a-f]{1,8}/;
+our $b_sign = qr/-128|-?(?:12[0-7]|1[01]\d|\d\d|\d)|-?(?:$b_hex)/;
+our $h_sign = qr/-32768|-?(?:3276[0-7]|327[0-5]\d|32[0-6]\d\d|3[01]\d{3}|\d{1,4})|-?(?:$h_hex)/;
+our $w_sign = qr/-?(?:\d+|$w_hex)/;
 our $eb_off = qr/$b_sign\($ereg_no_esp\)/;
 our $e_off = qr/$w_sign\($ereg_no_esp\)/;
 our $imb_sign = qr/\$$b_sign/;
 
-our $lbyte = qr/(?:$b_sign|$b_hex)/;
-our $lhalf = qr/(?:$h_sign|$h_hex)/;
-our $lword = qr/(?:$w_sign|$w_hex)/;
+our $lbyte = qr/(?:$b_sign)/;
+our $lhalf = qr/(?:$h_sign)/;
+our $lword = qr/(?:$w_sign)/;
 our $any_const = qr/(?:$lbyte|$lword|.L\w+|[\w+\.-]+)(?:[+-]\d+)?/;
 our $immed = qr/\$$any_const/;
 our $reg = qr/$ereg|$wreg|$breg|$freg/;
