@@ -26,6 +26,11 @@ GNU binutils (most recently tested with version 2.18)
 Perl (most recently tested with version 5.10.0)
 libelf (most recently tested with version 0.8.10)
 
+Previous versions have worked with tools as old as GCC 3.3.5, binutils
+2.15, Perl 5.8.4, and libelf 0.8.5, and no major incompatible changes
+have been made, so any version in those ranges will probably work with
+little effort.
+
 This version also includes a second implementation of the verifier
 that runs in C inside the loader. It requires the libdisasm x86
 disassembly library, which is available from
