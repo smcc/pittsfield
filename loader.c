@@ -783,13 +783,13 @@ void verify(int code_len) {
     int next_aligned = offset;
     int safety = 0, unsafety = 0;
     int bump_count = 0;
-    x86_init(opt_none, 0);
+    x86_init(opt_none, 0, 0);
     while (offset < code_len) {
 	x86_insn_t insn;
-	int len, i;
+	int len, i, my_explicit_count;
 	int arg_types;
 	int flags;
-	x86_oplist_t args[4], *arg;
+	x86_oplist_t args[10], *arg;
 	if (offset == next_aligned) {
 	    next_aligned += CHUNK_SIZE;
 	} else if (offset > next_aligned) {
@@ -868,8 +868,12 @@ void verify(int code_len) {
 		fail_verify_int("Illegal insn type", insn.type, offset);
 	    }
 	}
+
+	/* We do all of our calculation based on the explicit operands
+	   to make the parallel with verify.pl clearer, even though in
+	   a clean-slate implementation, it might be better to treat
+	   the implicit operands uniformly. */
 	assert(insn.explicit_count <= 3);
-	arg = insn.operands;
 	i = 0;
 	for (arg = insn.operands; arg; arg = arg->next) {
 	    if (!(arg->op.flags & op_implied)) {
@@ -878,23 +882,27 @@ void verify(int code_len) {
 		i++;
 	    }
 	}
-	args[i-1].next = 0;
-	assert(i == insn.explicit_count);
+	if (i > 0)
+	    args[i-1].next = 0;
+	/* The insn.explicit_count field seems to be broken in
+	   libdisas 0.23, giving 2 rather than 1 for "imul %ecx". */
+	/* assert(i == insn.explicit_count); */
+	my_explicit_count = i;
 
 #define UNARY(op1)               ((op1) << 4 | 1)
 #define BINARY(op1, op2)         ((op1) << 8 | (op2) << 4 | 2)
 #define TERNARY(op1, op2, op3)   ((op1) << 12 | (op2) << 8 | (op1) << 4 | 3)
-	if (insn.explicit_count == 0) {
+	if (my_explicit_count == 0) {
 	    arg_types = 0;
-	} else if (insn.explicit_count == 1) {
+	} else if (my_explicit_count == 1) {
 	    arg_types = UNARY(args[0].op.type);
-	} else if (insn.explicit_count == 2) {
+	} else if (my_explicit_count == 2) {
 	    arg_types = BINARY(args[0].op.type, args[1].op.type);
-	} else if (insn.explicit_count == 3) {
+	} else if (my_explicit_count == 3) {
 	    arg_types = TERNARY(args[0].op.type, args[1].op.type,
 				args[2].op.type);
 	} else {
-	    printf("%d operands!\n", insn.explicit_count);
+	    printf("%d operands!\n", my_explicit_count);
 	    arg_types = -1;
 	}
 	switch (arg_types) {
@@ -991,6 +999,8 @@ void verify(int code_len) {
 	    case 0xa000: /* e.g., fstp %st(0) */
 		break;
 	    case insn_neg: case insn_not:
+		break;
+	    case insn_mul: case insn_div:
 		break;
 	    case insn_call: 
 		flags |= USE_ESP;
@@ -1134,6 +1144,10 @@ void verify(int code_len) {
 		break;
 	    case 0xa000: /* e.g., fstpq */
 		flags = 0; /* XXX floating stores */
+		break;
+	    case insn_mul: case insn_div:
+		/* Read from memory, implicitly write to a reg */
+		flags = 0;
 		break;
 	    case insn_inc: case insn_dec:
 	    case insn_not: case insn_neg:
