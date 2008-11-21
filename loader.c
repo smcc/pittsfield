@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <asm/ldt.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -38,6 +39,15 @@ int inside_esp;
 int outside_ebp;
 int inside_ebp;
 
+/* It seems better from an isolation standpoint to use a separate
+   %gs for stack checks inside the sandbox, but that would require
+   switching the outside one back before calling any libc functions,
+   since it also expects to access thread information in that segment.
+   So for the moment we share the %gs segment, but check that only
+   offset 0x14 is accessed. */
+/* short outside_gs;
+   short inside_gs; */
+
 int outside_ebx;
 int outside_esi;
 int outside_edi;
@@ -57,20 +67,49 @@ int call_in(void *addr, int argc, char **argv) {
 	asm("movl  %ebx, outside_ebx");
 	asm("movl  %esi, outside_esi");
 	asm("movl  %edi, outside_edi");
+	/* asm("movw  %gs, outside_gs"); */
 	asm("movl  inside_esp, %esp");
 	asm("movl  inside_ebp, %ebp");
+	/* asm("movw  inside_gs, %gs"); */
 	asm("call  *%eax");
 	asm("movl  %esp, inside_esp");
 	asm("movl  %ebp, inside_ebp");
+	/* asm("movw  %gs, inside_gs"); */
 	asm("movl  outside_esp, %esp");
 	asm("movl  outside_ebp, %ebp");
 	asm("movl  outside_ebx, %ebx");
 	asm("movl  outside_esi, %esi");
 	asm("movl  outside_edi, %edi");
+	/* asm("movw  outside_gs, %gs"); */
 	asm("movl  %%eax, %0" : "=r" (ret));
 	return ret;
     }
     return exit_value;
+}
+
+/* Is this declared anywhere? */
+extern int modify_ldt(int func, void *ptr, unsigned long bytecount);
+
+/* Set up a segment descriptor for a one-page segment starting at the
+   given linear address, and return its selector. */
+short setup_gs_ldt(unsigned addr) {
+    struct user_desc desc;
+    short selector = 16 + 4 + 3; /* 4=LDT, 3=RPL */
+    memset(&desc, 0, sizeof(desc));
+    desc.seg_32bit = 1;
+    desc.read_exec_only = 0;
+    desc.limit_in_pages = 1;
+    desc.seg_not_present = 0;
+    desc.useable = 1;
+    desc.entry_number = selector / 8;
+    desc.base_addr = addr;
+    desc.limit = 1;
+    desc.contents = MODIFY_LDT_CONTENTS_DATA;
+    if (modify_ldt(1, &desc, sizeof(desc)) < 0) {
+	fprintf(stderr, "Segment descriptor setup failed\n");
+	exit(-1);
+    }
+    return selector;
 }
 
 #ifdef __cplusplus
@@ -1529,7 +1568,17 @@ int main(int argc, char **argv) {
        also compensate for any padding of the .bss section that wasn't
        accounted for above. */
     data_break = (void *)((unsigned)(data_break + 2*4096) & ~4095);
+#if 0
+    {
+	/* Set up %gs to point to a page at the top of the data
+	   sandbox region. */
+	unsigned gs_ptr = (unsigned)DATA_END - 4096;
+	inside_gs = setup_gs_ldt(gs_ptr);
+	inside_ebp = inside_esp = gs_ptr - 4;
+    }
+#else
     inside_ebp = inside_esp = (unsigned)DATA_END - 4;
+#endif
     ret = call_in((void*)CODE_START, argc, argv);
 #ifndef LOADER_FIO
     fprintf(stderr, "Module returned %d\n", ret);

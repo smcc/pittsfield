@@ -1,3 +1,6 @@
+next    not yet released
+	Add support for -fstack-protector (on by default in Ubuntu)
+
 0.5	2008-11-20
 	Bugfix and portability release
 	GCC 4.3, Binutils 2.18, and libdisasm 0.23 compatibility

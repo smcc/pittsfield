@@ -176,6 +176,11 @@ REPLACEMENT void _exit(int status) {
     exit(status);
 }
 
+void __stack_chk_fail(void) {
+    fprintf(stderr, "Stack smashing detected, exiting\n");
+    exit(-1);
+}
+
 REPLACEMENT int fcntl(int fd, int cmd, ...) {
     errno = ENOSYS;
     return -1;

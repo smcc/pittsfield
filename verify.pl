@@ -414,6 +414,20 @@ sub check_insn {
 	} else {
 	    die "Weird args";
 	}
+    } elsif ($args =~ /^%gs:0x14,($reg)$/) {
+	my $target = $1;
+	my $change = 0;
+	$change |= CHANGE_EBP if $target =~ /bp/;
+	$change |= CHANGE_ESP if $target =~ /sp/;
+	if ($op eq "mov" or $op eq "xor") {
+	    # %gs:0x14 is used by gcc to implement -fstack-protector.
+	    # Treat it here like a special-purpose register that can
+	    # only be written like this.
+	    return $change;
+	} else {
+	    die "Weird stack protector insn: $op $args";
+	}
+	return 0;
     } else {
 	die "Weird arguments $args in $op\n";
     }
