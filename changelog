@@ -1,5 +1,6 @@
 next    not yet released
 	Add support for -fstack-protector (on by default in Ubuntu)
+	Add support for Binutils 2.19 (and betas in Ubuntu 8.10)
 
 0.5	2008-11-20
 	Bugfix and portability release

@@ -407,9 +407,17 @@ sub check_insn {
 	} else {
 	    return IJUMP|$flags;
 	}
-    } elsif ($args eq "%ss:0x0(%esi(,1)?),%esi") {
+    } elsif ($args =~ /%ss:0x0\(%esi(,1)?\),%esi/) {
 	if ($op eq "lea") {
 	    # OK, we use this as a weird nop
+	    return 0;
+	} else {
+	    die "Weird args";
+	}
+    } elsif ($args eq "0x0(%esi,%eiz,1),%esi" or
+	     $args eq "0x0(%edi,%eiz,1),%edi") {
+	if ($op eq "lea") {
+	    # New disassembly of another weird no-op
 	    return 0;
 	} else {
 	    die "Weird args";
