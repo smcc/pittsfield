@@ -22,7 +22,7 @@ trusted stubs.
 
 Required software:
 GCC (most recently tested with version 4.3.2)
-GNU binutils (most recently tested with version 2.18)
+GNU binutils (most recently tested with version 2.19)
 Perl (most recently tested with version 5.10.0)
 libelf (most recently tested with version 0.8.10)
 
@@ -70,9 +70,10 @@ verifiers has yet been sufficiently reviewed to recommend the use of
 PittSFIeld in security-critical production environments. Though the
 two verifiers have been cross-checked and a number of problems have
 been fixed, they were written by the same developer, and it is likely
-that additional problems exist. Also, because of limitations of the
-libdisasm library at the time it was written, the load-time verifier
-unsafely treats all x87 floating-point instructions as equivalent.
+that additional problems exist. Also, there are some known gaps in the
+checking performed by the load-time verifier: it treats all x87
+floating-point instructions as equivalent, and it allows modification
+of segment registers and use of non-standard segments.
 
 PittSFIeld is Copyright (C) 2004-2006,2008, Stephen McCamant.
 This program is free software; you can redistribute it and/or modify
