@@ -407,7 +407,7 @@ sub check_insn {
 	} else {
 	    return IJUMP|$flags;
 	}
-    } elsif ($args =~ /%ss:0x0\(%esi(,1)?\),%esi/) {
+    } elsif ($args =~ /^%ss:0x0\(%esi(,1)?\),%esi$/) {
 	if ($op eq "lea") {
 	    # OK, we use this as a weird nop
 	    return 0;
