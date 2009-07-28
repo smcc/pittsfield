@@ -1443,7 +1443,7 @@ int main(int argc, char **argv) {
     int data_len = 0, data_offset = 0;
     int code_len = 0, code_offset = 0;
     int rodata_len = 0, rodata_offset = 0;
-    int ret;
+    int ret, count;
     void *retp;
     unsigned version;
     const char *fio_name;
@@ -1550,13 +1550,15 @@ int main(int argc, char **argv) {
     assert(data_size <= DATA_SIZE);
     elf_end(elf);
     lseek(fd, code_offset, SEEK_SET);
-    read(fd, (void *)CODE_START, code_len);
+    count = read(fd, (void *)CODE_START, code_len);
+    assert(count == code_len);
     /*lseek(fd, rodata_offset, SEEK_SET);
     printf("Loading %d bytes of read-only data at %x\n",
 	   rodata_len, (0x10000000 + code_len));
 	   read(fd, (void *)(0x10000000 + code_len), rodata_len); */
     lseek(fd, data_offset, SEEK_SET);
-    read(fd, (void *)DATA_START, data_len);
+    count = read(fd, (void *)DATA_START, data_len);
+    assert(count == data_len);
     close(fd);
     init_wrappers();
 #ifdef VERIFY
