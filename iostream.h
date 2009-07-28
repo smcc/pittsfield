@@ -146,7 +146,7 @@ public:
 	return *this;
     }
     ostream& operator<<(unsigned int n) { 
-	fprintf(fp, "%ud", n);
+	fprintf(fp, "%u", n);
 	return *this;
     }
     ostream& operator<<(long n) {
@@ -154,7 +154,7 @@ public:
 	return *this;
     }
     ostream& operator<<(unsigned long n) {
-	fprintf(fp, "%uld", n);
+	fprintf(fp, "%lu", n);
 	return *this;
     }
     ostream& operator<<(short n) {return operator<<((int)n);}
@@ -169,7 +169,7 @@ public:
 	return *this;
     }
     ostream& operator<<(long double n) {
-	fprintf(fp, "%lg", n);
+	fprintf(fp, "%Lg", n);
 	return *this;
     }
     ostream& operator<<(const void *p) {
