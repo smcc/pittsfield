@@ -1,4 +1,5 @@
-next    not yet released
+0.6     2009-07-28
+        Fix some problems pointed out by new GCC warnings
 	Add support for -fstack-protector (on by default in Ubuntu)
 	Add support for Binutils 2.19 (and betas in Ubuntu 8.10)
 
