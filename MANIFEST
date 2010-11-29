@@ -8,6 +8,7 @@ crtend.S		   Source for special last object for C++ linking
 float.h			   C standard library floating-point sizes header
 fstream.h		   C++ file IO template header
 high-link.x		   Linker script to relocate to a high address
+high-link.patch		   Patch to regenerate high-link.x
 hw-c++.cc		   Very simple C++ example module
 hw.c			   Very simple example module
 index-stubs.pl		   Generate files from stubs.h
