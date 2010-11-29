@@ -100,6 +100,8 @@ sub check_insn {
 	    return 0;
 	} elsif ($op eq "sahf") {
 	    return 0;
+	} elsif ($op eq "int3") {
+	    return 0;
 	} else {
 	    die "Unknown none-ary insn $op";
 	}
@@ -448,7 +450,7 @@ my $bump_count = 0;
 
 while (<>) {
     chomp;
-    if (/^([0-9a-f]+):.{22}\t([a-z12]{2,7}) +(.*)$/) {
+    if (/^([0-9a-f]+):.{22}\t([a-z123]{2,7}) *(.*)$/) {
 	my $addr = hex($1);
 	my $op = $2;
 	my $args = $3;
@@ -462,7 +464,7 @@ while (<>) {
 	    ($args =~ /%esp./ || $op =~ /push|pop|call|ret/)) {
 	    printf "Use of unsafe %%esp at 0x%08x\n", $addr;
 	}
-	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf|xchg)$/) {
+	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf|xchg|int3)$/) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);

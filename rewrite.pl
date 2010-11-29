@@ -399,7 +399,7 @@ sub maybe_rewrite {
 	my $sandbox_len = 0;
 	my $call_len;
 	return 0 if !$jump_sandbox and !$do_align;
-	if ($args =~ /^\.?\w+$/) {
+	if ($args =~ /^\.?[\w.]+$/) {
 	    $real_call = $line;
 	    $call_len = 5;
 	} elsif ($args =~ /^\*($lab_complex|$reg|$any_const)$/) {
@@ -665,7 +665,7 @@ while (<INPUT>) {
     } elsif (/^\t\.p2align/) {
 	# Ignore other alignment directives introduced by the compiler
 	next;
-    } elsif (/^($label|\w+):$/) {
+    } elsif (/^($label|[\w.]+):$/) {
 	align();
     }
     chomp;
