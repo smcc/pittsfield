@@ -1,4 +1,4 @@
-VERSION:=0.6
+VERSION:=0.7
 
 OPT:=-O3 -ffast-math
 CXXFLAGS := -fno-exceptions -fno-rtti
