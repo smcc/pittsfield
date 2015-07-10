@@ -161,7 +161,7 @@ if ($no_sfi or $jump_only) {
 
 sub assemble_file {
     my($s_file, $o_file) = @_;
-    verbose_command($as, $s_file, "-o", $o_file);
+    verbose_command($as, "-32", $s_file, "-o", $o_file);
 }
 
 sub compile_file {
@@ -179,7 +179,7 @@ sub compile_file {
 	    push @args, "-I$fake_libc_inc";
 	}
 	push @args, "-fno-schedule-insns2" unless $no_sfi eq "base";
-	push @args, "--fixed-ebx"
+	push @args, "--fixed-ebx", # "--fixed-ebp",
 	  unless $no_sfi eq "base" or $no_sfi eq "noschd";
     }
     my @rewrite_flags = (@size_flags);
@@ -203,7 +203,7 @@ sub compile_file {
     if ($threadsafe_return) {
 	push @rewrite_flags, "-threadsafe-return";
     }
-    verbose_command(($cxx_mode ? $gxx : $gcc),
+    verbose_command(($cxx_mode ? $gxx : $gcc), "-m32",
 		    "-S", "-o", "$temp_file.s", @args, $c_file);
     verbose_redir_command($perl, "-I$pittsfield_dir", $rm_strops,
 			  "$temp_file.s", ">$temp_file-nostr.s");
@@ -238,6 +238,7 @@ if ($minus_c and @c_files) {
     # Remove compiler-ish options
     @args = grep(!/^-O[0123456]$/, @args);
     @args = grep(!/^-f/, @args);
+    @args = grep(!/^-m32/, @args);
 
     if ($pad_only) {
 	verbose_command($real_compiler, "-o", $out_file, @args);
@@ -298,7 +299,8 @@ if ($minus_c and @c_files) {
 	    @start_objs = ($libc_mo);
 	}
 
-	verbose_command($ld, "-o", $fio_file, @start_objs, @ld_args, @args);
+	verbose_command($ld, "-m", "elf_i386",
+			"-o", $fio_file, @start_objs, @ld_args, @args);
 	if (!$no_sfi and !$jump_only) {
 	    verbose_redir_command($objdump, "-dr", $fio_file, ">$dis_file");
 	    open(CHECKS, "-|", $perl, "-I$pittsfield_dir", $verify,
@@ -317,7 +319,7 @@ if ($minus_c and @c_files) {
 	    unlink($dis_file);
 	}
 	if (!$fio_only) {
-	    verbose_command($gcc, "-o", $out_file, "-g",
+	    verbose_command($gcc, "-o", $out_file, "-g", "-m32",
 			    "-D$size_macro",
 			    qq/-DLOADER_FIO="$fio_file"/, $loader_c,
 			    @loader_flags);

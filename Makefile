@@ -10,12 +10,17 @@ NO_SCHD := -fno-schedule-insns2
 # Adjust for your preferred version of GCC, at least 3.3 suggested:
 # CC  := gcc-3.3
 # CXX := g++-3.3
-CC  := gcc
-CXX := g++
+CC  := gcc -m32
+CXX := g++ -m32
 
 # Adjust to location of libdisasm, if you want the C verifier
 # VERIFY_CFLAGS := -I../libdisasm-0.23/libdisasm -DVERIFY
 # VERIFY_LDFLAGS := ../libdisasm-0.23/libdisasm/.libs/libdisasm.a
+
+# Adjust to location of 32-bit libelf, if non-standard
+# VERIFY_CFLAGS := -I$(HOME)/soft/i386/lib/libelf/0.8.13/include/libelf
+# VERIFY_LDFLAGS := -L$(HOME)/soft/i386/lib/libelf/0.8.13/lib -Wl,-rpath $(HOME)/soft/i386/lib/libelf/0.8.13/lib
+
 VERIFY_CFLAGS := 
 VERIFY_LDFLAGS :=
 
