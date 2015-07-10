@@ -569,6 +569,7 @@ if ($is_kernel) {
     }
     print;
     if ($is_main) {
+	print qq[\t.section\t.text.startup,"ax",\@progbits\n];
 	nop_pad($chunk_size - 7);
 	print "\tpushl %edx\n"; # argv: 1 byte
 	print "\tpushl %ecx\n"; # argc: 1 byte
