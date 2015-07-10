@@ -15,6 +15,10 @@ while (<>) {
 	    chomp $stringop;
 	    $stringop =~ s/^\t//;
 	}
+	if ($stringop eq "ret") {
+	    print "\tret\n";
+	    next;
+	}
 	my $head_label = ".LRWSOPS$label_count"; $label_count++;
 	my $tail_label = ".LRWSOPS$label_count"; $label_count++;
 	my $save_eax = ($stringop !~ /^stos/);
@@ -44,7 +48,7 @@ while (<>) {
 	    print "\tleal\t-1(%ecx), %ecx\n";
 	    print "\tjz\t$head_label\n";
 	} else {
-	    die "Unsupported string op $repop $stringop\n";
+	    die "Unsupported string op $repop $stringop (line $.)\n";
 	}
 	print "$tail_label:\n";
 	print "\tpopl\t%eax\n" if $save_eax;
