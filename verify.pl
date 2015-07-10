@@ -211,7 +211,7 @@ sub check_insn {
 		return USE_ESP;
 	    }
 	    return $change;
-	} elsif ($op =~ /^$arith|$shift|$fbin$/) {
+	} elsif ($op =~ /^$arith|$shift|$fbin|cmov$cond$/) {
 	    return $change;
 	} elsif ($op eq "xchg") {
 	    # xchg changes both regs...
@@ -353,7 +353,7 @@ sub check_insn {
 	}
 	if ($op =~ /^mov([sz](bl|wl|bw))?$/) {
 	    return $change | ($simple_ebp ? USE_EBP : IREAD);
-	} elsif ($op =~ /^$arith$/) {
+	} elsif ($op =~ /^$arith|cmov$cond$/) {
 	    return $change | ($simple_ebp ? USE_EBP : IREAD);
 	} elsif ($op eq "lea") {
 	    return $change;
@@ -464,7 +464,7 @@ while (<>) {
 	    ($args =~ /%esp./ || $op =~ /push|pop|call|ret/)) {
 	    printf "Use of unsafe %%esp at 0x%08x\n", $addr;
 	}
-	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf|xchg|int3)$/) {
+	if ($op !~ /^(mov(|l|b|w|[sz]bl|[sz]wl|[sz]bw)|lea|$unary(?:b|w|l)?|nop|($shift|$dshift)(?:[bwl])?|$arith(?:b|w|l)?|j$cond|set$cond|jecxz|jmp|call|leave|ret|pushf|popf|$convert|cld|$fload|$fbin|$fstore|$fconst|$funary|$fcstore|$fcload|sahf|xchg|int3|cmov$cond)$/) {
 	    die "Unknown opcode $op";
 	}
 	my $flags = check_insn($op, $args, $safety, $unsafety);
