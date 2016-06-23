@@ -555,7 +555,9 @@ if ($is_kernel) {
     print "\t.p2align $log_chunk_size\n";
 } else {
     while (<INPUT>) {
-	if (/^\t?\.text/ or /linkonce.*\"ax/) {
+	if (/^\t?\.text/ or /^\t?\.section\s*\.text.startup/ or
+	    /linkonce.*\"ax/)
+	{
 	    # OK, there's real code in this file
 	    $done_early = 0;
 	    last;

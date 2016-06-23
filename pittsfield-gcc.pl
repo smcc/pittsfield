@@ -179,7 +179,7 @@ sub compile_file {
 	    push @args, "-I$fake_libc_inc";
 	}
 	push @args, "-fno-schedule-insns2" unless $no_sfi eq "base";
-	push @args, "--fixed-ebx", # "--fixed-ebp",
+	push @args, "--fixed-ebx", "--fixed-ebp",
 	  unless $no_sfi eq "base" or $no_sfi eq "noschd";
     }
     my @rewrite_flags = (@size_flags);

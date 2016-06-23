@@ -1,6 +1,6 @@
 VERSION:=0.7
 
-OPT:=-O3 -ffast-math
+OPT:=-O -ffast-math
 CXXFLAGS := -fno-exceptions -fno-rtti
 DEBUG:=-g
 AS:=as
@@ -10,8 +10,8 @@ NO_SCHD := -fno-schedule-insns2
 # Adjust for your preferred version of GCC, at least 3.3 suggested:
 # CC  := gcc-3.3
 # CXX := g++-3.3
-CC  := gcc -m32
-CXX := g++ -m32
+CC  := gcc-4.9 -m32
+CXX := g++-4.9 -m32
 
 # Adjust to location of libdisasm, if you want the C verifier
 # VERIFY_CFLAGS := -I../libdisasm-0.23/libdisasm -DVERIFY

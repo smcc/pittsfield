@@ -47,6 +47,12 @@ while (<>) {
 	    print "\tleal\t1(%edi), %edi\n";
 	    print "\tleal\t-1(%ecx), %ecx\n";
 	    print "\tjz\t$head_label\n";
+	} elsif ($repop eq "repnz" and $stringop eq "scasb") {
+	    # strlen
+	    print "\tcmpb\t%al, (%edi)\n";
+	    print "\tleal\t1(%edi), %edi\n";
+	    print "\tleal\t-1(%ecx), %ecx\n";
+	    print "\tjnz\t$head_label\n";
 	} else {
 	    die "Unsupported string op $repop $stringop (line $.)\n";
 	}

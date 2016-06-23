@@ -20,7 +20,7 @@
 #include <time.h>
 
 #include <unistd.h>
-#include <libelf/libelf.h>
+#include <libelf.h> /* on some other systems, <libelf/libelf.h> */
 #include <assert.h>
 
 #include "sizes.h"
