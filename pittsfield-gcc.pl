@@ -178,7 +178,29 @@ sub compile_file {
 	} else {
 	    push @args, "-I$fake_libc_inc";
 	}
+	# -fno-reorder-functions disables optimizations which do things
+	# like split functions into hot and cold areas that go in
+	# separate .text.* sections. Because we can't easily control
+	# the relative order of these subsections, this breaks our
+	# assumption that the sandbox entry point is 0x10000000. In
+	# the future it might be safe to lift that assumption, as long
+	# as the entry point still lets us find and check the trampoline
+	# stubs.
+	push @args, "-fno-reorder-functions";
+	# -fno-schedule-insns2 disables some kinds of instruction
+	# reordering which hurt PittSFIeld's performance overall because
+	# they made us have to save and restore eflags. We haven't
+	# rechecked whether this performance trade-off works the same
+	# way with a modern GCC and CPU.
 	push @args, "-fno-schedule-insns2" unless $no_sfi eq "base";
+	# --fixed-ebx is because we use %ebx for sandboxing checks
+	# --fixed-ebp is because modern GCC will use %ebp for both
+	# a frame-pointer and as a general-purpose register, but we
+	# can't be flexible that way. The classic PittSFIeld invariant
+	# is designed for %ebp always being a frame pointer, but I don't
+	# know if we can get modern GCC to do that. Probably better for
+	# performance would be to make always general-purpose with
+	# -fomit-frame-pointer and make it not special to PittSFIeld.
 	push @args, "--fixed-ebx", "--fixed-ebp",
 	  unless $no_sfi eq "base" or $no_sfi eq "noschd";
     }
