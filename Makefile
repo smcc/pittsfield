@@ -1,6 +1,6 @@
 VERSION:=0.7
 
-OPT:=-O -ffast-math
+OPT:=-O2 -ffast-math
 CXXFLAGS := -fno-exceptions -fno-rtti
 DEBUG:=-g
 AS:=as
@@ -10,8 +10,8 @@ NO_SCHD := -fno-schedule-insns2
 # Adjust for your preferred version of GCC, at least 3.3 suggested:
 # CC  := gcc-3.3
 # CXX := g++-3.3
-CC  := gcc-4.9 -m32
-CXX := g++-4.9 -m32
+CC  := gcc-4.8 -m32
+CXX := g++-4.8 -m32
 
 # Adjust to location of libdisasm, if you want the C verifier
 # VERIFY_CFLAGS := -I../libdisasm-0.23/libdisasm -DVERIFY
@@ -21,8 +21,13 @@ CXX := g++-4.9 -m32
 # VERIFY_CFLAGS := -I$(HOME)/soft/i386/lib/libelf/0.8.13/include/libelf
 # VERIFY_LDFLAGS := -L$(HOME)/soft/i386/lib/libelf/0.8.13/lib -Wl,-rpath $(HOME)/soft/i386/lib/libelf/0.8.13/lib
 
+# These flags work if you have the 64-bit version of libelf installed
+# system-wide, and copy a 32-bit libelf.a into the current directory.
 VERIFY_CFLAGS := 
-VERIFY_LDFLAGS :=
+VERIFY_LDFLAGS := -L.
+
+#VERIFY_CFLAGS :=
+#VERIFY_LDFLAGS :=
 
 SIZE ?= classic
 REWRITE := perl rewrite.pl -size-$(SIZE)
