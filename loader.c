@@ -1478,6 +1478,7 @@ int main(int argc, char **argv) {
     elf = elf_begin(fd, ELF_C_READ, 0);
     ehdr = elf32_getehdr(elf);
     ph_count = ehdr->e_phnum;
+    (void)ph_count;
     /*assert(ph_count == 2);*/
     phdr = elf32_getphdr(elf);
 #ifdef CODE_IS_LOWER
@@ -1552,6 +1553,7 @@ int main(int argc, char **argv) {
     lseek(fd, code_offset, SEEK_SET);
     count = read(fd, (void *)CODE_START, code_len);
     assert(count == code_len);
+    (void)rodata_offset; (void)rodata_len;
     /*lseek(fd, rodata_offset, SEEK_SET);
     printf("Loading %d bytes of read-only data at %x\n",
 	   rodata_len, (0x10000000 + code_len));
